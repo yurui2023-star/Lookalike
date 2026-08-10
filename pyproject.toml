@@ -40,6 +40,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "slow: tests that sample the 100k-row production CSV",
+]
 
 [tool.ruff]
 line-length = 100

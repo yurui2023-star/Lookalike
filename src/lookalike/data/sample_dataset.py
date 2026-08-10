@@ -1,4 +1,4 @@
-"""Generate synthetic Bank Marketing dataset for local development and tests."""
+"""Fallback synthetic dataset (only when data/Bank_Marketing_Dataset.csv is missing)."""
 
 from __future__ import annotations
 

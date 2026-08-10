@@ -21,7 +21,8 @@ Based on uploaded reference implementations: `full_process.py` (pipeline) and `e
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-python -m lookalike.data.sample_dataset   # creates data/Bank_Marketing_Dataset.csv
+# Optional: only if data/Bank_Marketing_Dataset.csv is missing
+python -m lookalike.data.sample_dataset
 ```
 
 ## Run API
@@ -67,4 +68,25 @@ make lint
 
 ## Data
 
-Default dataset: `data/Bank_Marketing_Dataset.csv` (synthetic bank marketing records with `ClientID`, features, and `TermDepositSubscribed` target). Replace with your CDP export using the same column conventions.
+Production dataset: **`data/Bank_Marketing_Dataset.csv`**
+
+| Property | Value |
+|----------|-------|
+| Rows | 100,000 |
+| Columns | 45 (incl. `ClientID`, target, features) |
+| Target | `TermDepositSubscribed` (0/1, ~30% positive) |
+| ID | `ClientID` (maps to BRD HostCif / CIF) |
+| Excluded from modeling | `ResponsePropensity` (dropped automatically) |
+
+Key feature groups: demographics (`Age`, `Gender`, `MaritalStatus`, …), financials (`AnnualIncome`, `NetWorth`, `CreditScore`, …), product holdings, transaction/behavior, and marketing contact history.
+
+If the CSV file is missing locally, `python -m lookalike.data.sample_dataset` generates a small **synthetic fallback** for development only.
+
+### Run pipeline on real data
+
+```bash
+python scripts/eda_report.py      # writes output/eda_report.xlsx
+python scripts/full_process.py    # clean → IV filter → LightGBM (AUC ~0.67 on full set)
+```
+
+Column reference: `src/lookalike/data/schema.py`.
