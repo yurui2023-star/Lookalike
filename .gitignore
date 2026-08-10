@@ -16,7 +16,8 @@ venv/
 .coverage
 htmlcov/
 
-# IDE / OS
-.DS_Store
-.idea/
-.vscode/
+# Generated outputs
+output/
+
+# Sample data (generated on first run; keep optional committed copy)
+# data/Bank_Marketing_Dataset.csv

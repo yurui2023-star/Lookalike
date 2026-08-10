@@ -1,41 +1,49 @@
-# AGENTS.md
-
-## Cursor Cloud specific instructions
+# Cursor Cloud specific instructions
 
 ### Product overview
 
-Single-service **Lookalike Model API** (Python / FastAPI). Ranks candidate user profiles by similarity to a seed audience. See `README.md` for setup, endpoints, and example requests.
+**Lookalike Audience & Lead Generation API** — implements BRD flows for EDA, feature IV analysis, LightGBM training on sample (seed) data, and similarity scoring of 100% of candidate records. Reference logic from `scripts/full_process.py` and `scripts/eda_report.py`.
 
 ### Services
 
 | Service | Port | Start command |
 |---------|------|---------------|
-| Lookalike API | 8000 | `.venv/bin/lookalike-api` or `.venv/bin/uvicorn lookalike.main:app --reload --host 0.0.0.0 --port 8000` |
+| Lookalike API | 8000 | `.venv/bin/lookalike-api` |
 
-No database or external services are required.
+No database required. Generated artifacts go to `output/` (EDA Excel).
 
 ### First-time VM note
 
-Ubuntu images may ship without `python3-venv`. If `python3 -m venv .venv` fails, install it once (not part of the update script):
+If `python3 -m venv .venv` fails, install once:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y python3.12-venv
 ```
 
-### Lint / test / run
-
-Activate or prefix commands with `.venv/bin/`:
+Generate sample CSV (or let the API create it on startup):
 
 ```bash
-make install   # python3 -m venv .venv && pip install -e ".[dev]"
-make lint      # ruff check src tests
-make test      # pytest
-make run       # lookalike-api on port 8000
+make data
 ```
 
-Interactive API docs: http://localhost:8000/docs
+### Lint / test / run
+
+```bash
+make install
+make lint
+make test
+make run
+```
+
+CLI pipelines:
+
+```bash
+make eda        # scripts/eda_report.py
+make pipeline   # scripts/full_process.py
+```
 
 ### Gotchas
 
-- Always use the project virtualenv (`.venv/bin/...`); system Python does not include project dependencies.
-- The scoring logic lives in `src/lookalike/model.py` and normalizes features using seed min/max before distance scoring — small seed sets (1–2 users) are supported.
+- `POST /api/v1/lookalike/score` auto-trains using bundled sample data if no model is loaded yet.
+- Similarity threshold is a **post-scoring filter** (BRD): all candidates are scored; threshold only affects `matches` / dashboard counts.
+- LightGBM training uses the in-memory pipeline singleton; restarting the API clears the trained model.

@@ -1,13 +1,19 @@
-# Lookalike Model
+# Lookalike Audience & Lead Generation
 
-Minimal **lookalike audience scoring** service. Given a seed audience and a list of candidate users, the API ranks candidates by proximity to the seed profile centroid (age, income, engagement, purchase frequency), using min-max normalization derived from the seed set.
+Python service implementing the **Lookalike Audience & Lead Generation** BRD:
+
+- **Sample (Seed) analysis**: EDA Excel report, IV ranking, variable filtering (FR-05)
+- **Model training**: LightGBM on cleaned/filtered sample data
+- **Lookalike scoring**: score 100% of candidate records with Similarity Score 0–1 (FR-06)
+- **Dashboard snapshot**: AUC/AP metrics and feature importance (FR-07)
+
+Based on uploaded reference implementations: `full_process.py` (pipeline) and `eda_report.py` (EDA).
 
 ## Stack
 
-- **Python 3.11+** with **FastAPI** and **Uvicorn**
-- **NumPy** for feature normalization and distance scoring
-- **pytest** + **httpx** for tests
-- **ruff** for linting
+- Python 3.11+
+- FastAPI + Uvicorn
+- pandas, LightGBM, scikit-learn, openpyxl
 
 ## Setup
 
@@ -15,39 +21,50 @@ Minimal **lookalike audience scoring** service. Given a seed audience and a list
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+python -m lookalike.data.sample_dataset   # creates data/Bank_Marketing_Dataset.csv
 ```
 
-## Run (development)
+## Run API
 
 ```bash
-source .venv/bin/activate
-lookalike-api
-# or: uvicorn lookalike.main:app --reload --host 0.0.0.0 --port 8000
+make run
+# http://localhost:8000/docs
 ```
 
-API docs: http://localhost:8000/docs
-
-## Example request
+## CLI scripts (original notebooks/scripts)
 
 ```bash
-curl -s http://localhost:8000/api/v1/lookalike/score \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "seed_users": [
-      {"user_id": "seed-1", "age": 32, "income": 85000, "engagement_score": 0.9, "purchase_frequency": 8},
-      {"user_id": "seed-2", "age": 35, "income": 92000, "engagement_score": 0.85, "purchase_frequency": 7}
-    ],
-    "candidates": [
-      {"user_id": "candidate-close", "age": 33, "income": 88000, "engagement_score": 0.88, "purchase_frequency": 7.5},
-      {"user_id": "candidate-far", "age": 22, "income": 42000, "engagement_score": 0.2, "purchase_frequency": 1}
-    ],
-    "top_k": 2
-  }'
+python scripts/eda_report.py
+python scripts/full_process.py
 ```
+
+## Key API endpoints
+
+| Method | Path | BRD |
+|--------|------|-----|
+| POST | `/api/v1/eda` | Data exploration → Excel |
+| POST | `/api/v1/features/analyze` | FR-05 Feature importance (IV) |
+| POST | `/api/v1/model/train` | Train project model on sample data |
+| POST | `/api/v1/lookalike/score` | FR-06 Score all candidates |
+| GET | `/api/v1/dashboard` | FR-07 Metrics & feature importance |
+
+### Example: train + score with bundled sample data
+
+```bash
+curl -s -X POST http://localhost:8000/api/v1/model/train -H 'Content-Type: application/json' -d '{}'
+
+curl -s -X POST 'http://localhost:8000/api/v1/lookalike/score?use_sample_data=true&similarity_threshold=0.5'
+```
+
+Similarity threshold filters results **after** scoring (per BRD); all candidates receive a score.
 
 ## Test & lint
 
 ```bash
-pytest
-ruff check src tests
+make test
+make lint
 ```
+
+## Data
+
+Default dataset: `data/Bank_Marketing_Dataset.csv` (synthetic bank marketing records with `ClientID`, features, and `TermDepositSubscribed` target). Replace with your CDP export using the same column conventions.
