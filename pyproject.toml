@@ -1,6 +1,6 @@
 [project]
 name = "lookalike"
-version = "0.3.0"
+version = "0.3.1"
 description = "Lookalike Audience & Lead Generation platform (FastAPI + LightGBM)"
 readme = "README.md"
 requires-python = ">=3.11"
