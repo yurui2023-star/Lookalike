@@ -68,9 +68,18 @@ make lint
 
 ## Documentation
 
-- [`docs/Lookalike_Detailed_Design_v2.1_Optimized.html`](docs/Lookalike_Detailed_Design_v2.1_Optimized.html) — optimized detailed design (phased delivery)
-- [`docs/DESIGN_OPTIMIZATION.md`](docs/DESIGN_OPTIMIZATION.md) — v2.0 → v2.1 change summary
-- [`docs/Lookalike_Detailed_Design_v2.html`](docs/Lookalike_Detailed_Design_v2.html) — original full-stack design (archived)
+### Complete Detailed Design v2.1 (preferred)
+
+| Language | File |
+|----------|------|
+| 中文 | [`docs/Lookalike_Detailed_Design_v2.1_Complete_ZH.html`](docs/Lookalike_Detailed_Design_v2.1_Complete_ZH.html) |
+| English | [`docs/Lookalike_Detailed_Design_v2.1_Complete_EN.html`](docs/Lookalike_Detailed_Design_v2.1_Complete_EN.html) |
+
+### Other design docs
+
+- [`docs/Lookalike_Detailed_Design_v2.1_Optimized.html`](docs/Lookalike_Detailed_Design_v2.1_Optimized.html) — v2.0 → v2.1 delta notes
+- [`docs/DESIGN_OPTIMIZATION.md`](docs/DESIGN_OPTIMIZATION.md) — short optimization summary
+- [`docs/Lookalike_Detailed_Design_v2.html`](docs/Lookalike_Detailed_Design_v2.html) — original full-stack design v2.0 (archived)
 
 ## MVP + P1-lite (implemented)
 

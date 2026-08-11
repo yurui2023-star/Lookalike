@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookalike Intelligent Marketing Model — Detailed Design v2.1</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:#fff; --bg2:#f7f8fa; --bg3:#f0f1f3; --text:#1a1a2e; --muted:#6b7280;
+    --border:#e5e7eb; --strong:#d1d5db; --accent:#0f6e56; --accent-bg:#e1f5ee;
+    --blue:#185fa5; --blue-bg:#e6f1fb; --amber:#854f0b; --amber-bg:#faeeda;
+    --red:#a32d2d; --red-bg:#fcebeb; --coral:#d85a30; --r:8px; --rl:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',Arial,sans-serif;background:var(--bg3);color:var(--text);line-height:1.7;font-size:14px}
+  .container{max-width:1100px;margin:0 auto;padding:24px}
+  .doc-header{background:linear-gradient(135deg,#0f6e56,#0b5442);color:#fff;padding:40px 32px;border-radius:var(--rl);margin-bottom:24px}
+  .doc-header h1{font-size:26px;font-weight:600;margin-bottom:8px}
+  .doc-header .subtitle{opacity:.9;margin-bottom:18px}
+  .doc-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px}
+  .doc-meta .label{opacity:.65;display:block}
+  .toc,section{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:28px 32px;margin-bottom:18px}
+  .toc h2,section>h2{font-size:20px;border-bottom:2px solid var(--accent);padding-bottom:8px;margin-bottom:16px}
+  h3{font-size:16px;margin:18px 0 10px}
+  h4{font-size:14px;margin:12px 0 8px}
+  p,li{margin-bottom:8px}
+  ul,ol{padding-left:22px;margin-bottom:12px}
+  a{color:var(--accent)}
+  code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--coral)}
+  pre{background:#1e2430;color:#e8eaed;padding:14px;border-radius:var(--r);overflow-x:auto;margin-bottom:14px;font-size:12px;line-height:1.5}
+  pre code{background:none;color:inherit;padding:0}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+  th{background:var(--bg2);text-align:left;padding:9px 10px;border-bottom:2px solid var(--strong);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .badge-mvp{background:var(--accent-bg);color:var(--accent)}
+  .badge-p1{background:var(--blue-bg);color:var(--blue)}
+  .badge-p2{background:var(--amber-bg);color:var(--amber)}
+  .callout{border-left:4px solid;padding:12px 14px;margin-bottom:14px;border-radius:0 var(--r) var(--r) 0;font-size:13px}
+  .callout-info{border-color:var(--blue);background:var(--blue-bg)}
+  .callout-warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout-ok{border-color:var(--accent);background:var(--accent-bg)}
+  .callout-danger{border-color:var(--red);background:var(--red-bg)}
+  .mermaid{text-align:center;margin:12px 0 16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+  .card-title{font-weight:600;margin-bottom:6px}
+  .stat-row{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0}
+  .stat .num{font-size:22px;font-weight:700;color:var(--accent)}
+  .stat .label{font-size:12px;color:var(--muted)}
+  .footer{text-align:center;color:var(--muted);margin:20px 0 40px;font-size:12px}
+  @media(max-width:800px){.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="doc-header">
+  <h1>Lookalike Intelligent Marketing Model — Detailed Design v2.1</h1>
+  <div class="subtitle">Complete detailed design (English) · Phased delivery · Online/offline split · Aligned with FastAPI + LightGBM repo</div>
+  <div class="doc-meta"><div><span class="label">Version</span><strong>2.1 Complete</strong></div><div><span class="label">Language</span><strong>English</strong></div><div><span class="label">Date</span><strong>2026-08</strong></div><div><span class="label">BRD</span><strong>Lookalike Audience & Lead Generation</strong></div><div><span class="label">Repo</span><strong>yurui2023-star/Lookalike</strong></div></div>
+</div>
+<div class="toc"><h2>Table of Contents</h2><ol><li><a href="#ch1">1. Design Overview & Principles</a></li><li><a href="#ch2">2. Business Architecture (5-Layer Smart Sales)</a></li><li><a href="#ch3">3. System Architecture & Phased Delivery</a></li><li><a href="#ch4">4. Data Asset Design (71+24 & Adapter)</a></li><li><a href="#ch5">5. Feature Engineering Pipeline</a></li><li><a href="#ch6">6. Model Training (Dual-Product Dual-Track)</a></li><li><a href="#ch7">7. Database Design</a></li><li><a href="#ch8">8. API Design</a></li><li><a href="#ch9">9. Service Layer Design</a></li><li><a href="#ch10">10. Frontend & UI/UX (P2)</a></li><li><a href="#ch11">11. Inference & Scoring Pipeline</a></li><li><a href="#ch12">12. Background Tasks & Scheduling</a></li><li><a href="#ch13">13. Security, Compliance & Fairness</a></li><li><a href="#ch14">14. Model Monitoring & Retraining</a></li><li><a href="#ch15">15. Deployment & CI/CD</a></li><li><a href="#ch16">16. Non-Functional Requirements</a></li><li><a href="#ch17">17. Delivery & RACI</a></li><li><a href="#ch18">18. Risk Assessment</a></li></ol></div>
+
+<section id="ch1">
+<h2>1. Design Overview & Principles</h2>
+<div class="callout callout-ok">This document is the <strong>Lookalike Detailed Design v2.1 (complete)</strong>. BRD capabilities are preserved, delivered in <strong>MVP → P1 → P2</strong> phases, and aligned with the existing FastAPI + LightGBM repository. Full frontend and external integrations are P2.</div>
+
+<h3>1.1 Product Goal</h3>
+<p>Lookalike Audience &amp; Lead Generation is an AI audience-expansion capability inside Smart Sale CDP. Given a product Project Model seed (Sample), it scores Potential candidates with a Similarity Score (0–1), produces Lookalike sets, feature importance, and dashboards, supports export/Segment, and can track conversion.</p>
+
+<h3>1.2 Design Principles</h3>
+<ol>
+<li><strong>Score–threshold separation</strong>: Create Process does not collect Similarity Threshold; Generate scores 100% of valid candidates; threshold is for Dashboard/Export only.</li>
+<li><strong>Version immutability</strong>: each run creates an independent Version with a frozen config snapshot.</li>
+<li><strong>Train/serve split</strong>: offline training writes Model Registry; online Generate loads deployed models only.</li>
+<li><strong>Zero tolerance for temporal leakage</strong>: mandatory denylist audit before training; hard fail on hit.</li>
+<li><strong>Dual-model independence</strong>: per product LightGBM (primary) + LR+WOE (explainable baseline).</li>
+<li><strong>Cold-start exclusion</strong>: customers with no transaction/App activity are not covered.</li>
+<li><strong>No fixed metric gates</strong>: AUC/KS are diagnostic; business success is Lift/A/B.</li>
+</ol>
+
+<h3>1.3 Technology Stack by Phase</h3>
+<table>
+<tr><th>Layer</th><th>MVP</th><th>P1</th><th>P2 (target)</th></tr>
+<tr><td>Backend</td><td>Python 3.11 + FastAPI</td><td>+ OIDC, Process APIs</td><td>+ gateway rate limits</td></tr>
+<tr><td>ML</td><td>LightGBM + IV/var_filter</td><td>+ LR/WOE, Registry</td><td>+ PSI/retrain jobs</td></tr>
+<tr><td>Storage</td><td>Local files / in-memory process store</td><td>PostgreSQL 15, object storage</td><td>partition + archive</td></tr>
+<tr><td>Tasks</td><td>BackgroundTasks</td><td>Celery + Redis</td><td>+ Beat Recurring</td></tr>
+<tr><td>Frontend</td><td>Swagger / CLI</td><td>Optional light console</td><td>React 18 + Ant Design Pro</td></tr>
+<tr><td>Monitoring</td><td>Logs + metric snapshots</td><td>Basic alerts</td><td>Prometheus + Grafana</td></tr>
+</table>
+</section>
+
+<section id="ch2">
+<h2>2. Business Architecture (5-Layer Smart Sales)</h2>
+<div class="mermaid">
+flowchart TB
+  subgraph L5[Analysis & Governance]
+    AC[Analysis Center - Lookalike]
+    AOC[Automated Operations]
+  end
+  subgraph L4[Execution & Outreach]
+    TC[Touch Channels]
+    PE[Process Engine]
+  end
+  subgraph L3[Marketing Strategy]
+    SC[Strategy Center]
+    CC[Content / Recommendation]
+  end
+  subgraph L2[Customer Understanding]
+    LC[Label Center]
+    PC[Portrait Center]
+  end
+  subgraph L1[Data Foundation]
+    DC[Data Center]
+  end
+  L1-->L2-->L3-->L4
+  L2-.->AC
+  AC-->|expanded audiences|L3
+  L4-.->|conversion feedback|L5
+</div>
+
+<h3>2.1 Positioning</h3>
+<table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>Layer</td><td>Analysis & Governance / Analysis Center</td></tr>
+<tr><td>Role</td><td>Expansion analysis & decision support — not a standalone execution system</td></tr>
+<tr><td>Inputs</td><td>Seed (Segment/upload), Potential (file/Segment/entire base)</td></tr>
+<tr><td>Outputs</td><td>Similarity scores, feature/event importance, Dashboard, export/Segment</td></tr>
+<tr><td>Upstream</td><td>Portrait Center, Label Center, Project Model</td></tr>
+<tr><td>Downstream</td><td>Strategy Center, optional CRM, export files</td></tr>
+</table>
+
+<h3>2.2 Core Responsibilities</h3>
+<ul>
+<li>Seed quality and feature importance analysis (FR-05)</li>
+<li>Full-population candidate scoring and versioning (FR-06)</li>
+<li>Dashboard, threshold filtering, split export (FR-07)</li>
+<li>Conversion tracking (FR-08, P2)</li>
+<li>Audit log (FR-09, P1+)</li>
+</ul>
+</section>
+
+<section id="ch3">
+<h2>3. System Architecture & Phased Delivery</h2>
+<div class="stat-row">
+  <div class="stat"><div class="num">MVP</div><div class="label">Enhance current repo</div></div>
+  <div class="stat"><div class="num">P1</div><div class="label">Operable backend</div></div>
+  <div class="stat"><div class="num">P2</div><div class="label">Full stack + integrations</div></div>
+</div>
+
+<div class="mermaid">
+flowchart LR
+  subgraph Offline[Offline Training Plane]
+    DS[DWH / Feature Tables]-->FE[Feature Eng + Leakage Audit]
+    FE-->TR[Train LR + LightGBM]
+    TR-->REG[(Model Registry)]
+  end
+  subgraph Online[Online Serving Plane]
+    UI[UI / Clients]-->API[FastAPI]
+    API-->SC[Scoring Workers]
+    REG-->SC
+    API-->DB[(PostgreSQL)]
+    SC-->DB
+    SC-->RD[(Redis histograms)]
+  end
+  CDP[CDP read-only]-->API
+  PMS[PMS]-->REG
+</div>
+
+<table>
+<tr><th>Phase</th><th>In scope</th><th>Out of scope</th><th>Acceptance</th></tr>
+<tr><td><span class="badge badge-mvp">MVP</span></td><td>Adapter, denylist, EDA, train, sync/async score, Dashboard JSON</td><td>React, Celery, live CDP</td><td>Real CSV train+score; tests green</td></tr>
+<tr><td><span class="badge badge-p1">P1</span></td><td>Process/Version, PG, async jobs, split export, Audit, OIDC</td><td>Full 8 screens, CRM</td><td>Create→Generate→Dashboard→Export</td></tr>
+<tr><td><span class="badge badge-p2">P2</span></td><td>React 8 screens, CDP/PMS, Recurring, Conversion, Mortgage 24 features</td><td>—</td><td>Dual-product live; measurable A/B</td></tr>
+</table>
+
+<h3>3.1 External Systems</h3>
+<table>
+<tr><th>System</th><th>Purpose</th><th>Direction</th><th>Phase</th></tr>
+<tr><td>CDP</td><td>Customer profiles by HostCif</td><td>Read</td><td>P2</td></tr>
+<tr><td>AI / Project Model</td><td>Model metadata, KS/AUC</td><td>Read</td><td>P1</td></tr>
+<tr><td>PMS</td><td>Product catalog & publish events</td><td>Read + notify</td><td>P2</td></tr>
+<tr><td>CRM</td><td>Optional lead push</td><td>Conditional write</td><td>P2</td></tr>
+<tr><td>Notification</td><td>Completion / export alerts</td><td>Write</td><td>P1+</td></tr>
+</table>
+</section>
+
+<section id="ch4">
+<h2>4. Data Asset Design (71+24 & Adapter)</h2>
+<div class="callout callout-warn">Production data in-repo is <code>Bank_Marketing_Dataset.csv</code> (~100k rows / 45 columns). BRD 71+24 features are bridged via a <strong>Feature Adapter</strong>; do not hard-code column names across services.</div>
+
+<h3>4.1 Three Feature Layers</h3>
+<table>
+<tr><th>Layer</th><th>Content</th><th>When</th></tr>
+<tr><td>L0</td><td>Actual CSV columns</td><td>MVP</td></tr>
+<tr><td>L1</td><td>Core 71 (incl. MB additions 61–71)</td><td>P1 wide table ready</td></tr>
+<tr><td>L2</td><td>Optional Mortgage 24</td><td>P2 Mortgage</td></tr>
+</table>
+
+<h3>4.2 Core 71 Group Summary</h3>
+<table>
+<tr><th>Group</th><th>Count</th><th>Content</th></tr>
+<tr><td>A. Demographics</td><td>8</td><td>Age, gender, marital, education, job, region…</td></tr>
+<tr><td>B. Banking relationship</td><td>18</td><td>Balances, product count, holdings, tenure…</td></tr>
+<tr><td>C. Credit behaviour</td><td>8</td><td>Limits, scores, DTI, NPL…</td></tr>
+<tr><td>D. Income & financial</td><td>8</td><td>Salary, disposable income, savings, liquidity…</td></tr>
+<tr><td>E. Transaction patterns</td><td>8</td><td>Volatility, spending mix, cross-border…</td></tr>
+<tr><td>F. App behaviour</td><td>8</td><td>Logins, sessions, loan-page/calculator intent…</td></tr>
+<tr><td>G. Consumer credit prefs</td><td>2</td><td>Instalment, insurance</td></tr>
+<tr><td>MB additions</td><td>11</td><td>CASA/term deposit, card spend, app active, DTI, NPL</td></tr>
+</table>
+
+<h3>4.3 Optional Mortgage 24</h3>
+<p>11 settlement cash-flow features + 13 counterparty/concentration features; enable only when settlement data exists. Same-CIF internal transfers must be excluded where specified.</p>
+
+<h3>4.4 ID System</h3>
+<table>
+<tr><th>ID</th><th>Purpose</th></tr>
+<tr><td>ClientID / HostCif</td><td>Upload key and CDP mapping</td></tr>
+<tr><td>personal_cif / enterprise_cif</td><td>Bank-wide customer identifiers</td></tr>
+<tr><td>device_id</td><td>App event linkage only — not a model feature</td></tr>
+</table>
+
+<h3>4.5 Feature Adapter Contract</h3>
+<pre><code>class FeatureAdapter(Protocol):
+    def to_model_frame(raw, *, drop_id, rename_target, for_scoring) -&gt; DataFrame
+    def feature_list() -&gt; list[str]
+    def leakage_denylist() -&gt; list[str]
+    def extract_ids(raw) -&gt; list[str]
+    def cold_start_mask(raw) -&gt; Series
+
+# MVP: BankMarketingCsvAdapter
+# P1: WideTableAdapter(feature_catalog)
+# P2: MortgageOptionalMixin</code></pre>
+</section>
+
+<section id="ch5">
+<h2>5. Feature Engineering Pipeline</h2>
+<div class="mermaid">
+flowchart LR
+  A[Extract]-->B[Same-CIF exclude]
+  B-->C[Cold-start filter]
+  C-->D[Missing/Identical/IV screen]
+  D-->E[P99 cap if skewed]
+  E-->F[Temporal leakage audit]
+  F-->G[WOE for LR / raw for LGB]
+  G-->H[Feature artifacts]
+</div>
+
+<h3>5.1 Quality Rules</h3>
+<table>
+<tr><th>Rule</th><th>Threshold</th><th>Action</th></tr>
+<tr><td>Missing rate</td><td>&gt; 95%</td><td>Drop feature</td></tr>
+<tr><td>Identical rate</td><td>&gt; 95%</td><td>Drop feature</td></tr>
+<tr><td>IV</td><td>&lt; 0.02</td><td>Drop feature</td></tr>
+<tr><td>Skewness</td><td>High</td><td>P99 capping</td></tr>
+<tr><td>Imputation</td><td>—</td><td>Median / mode</td></tr>
+</table>
+
+<h3>5.2 Temporal Leakage Denylist (Hard Fail)</h3>
+<ul>
+<li>Post-disbursement fields (current loan balance, disbursement date)</li>
+<li>Post-contact outcomes; other-model scores (e.g. <code>ResponsePropensity</code>)</li>
+<li>Pure identifiers (CIF, ID number)</li>
+<li>Constant eligibility fields inside the candidate pool</li>
+</ul>
+<div class="callout callout-danger">Any denylist residual → fail training/prep and write audit. No “warn and continue”.</div>
+
+<h3>5.3 Cold Start</h3>
+<p>Zero transactions and zero App active days in the Observation Window → <code>insufficient_data</code>, not scored. Unmapped identity → <code>unmapped</code>.</p>
+
+<h3>5.4 Event Importance / RFM</h3>
+<p>Compute Recency / Frequency / Monetary per Event in the Observation Window. Dashboard shows static Feature Importance and Event Importance. MVP may approximate with model gain; P1 adds RFM reporting.</p>
+</section>
+
+<section id="ch6">
+<h2>6. Model Training (Dual-Product Dual-Track)</h2>
+<div class="callout callout-info">Per product: train <strong>LightGBM (primary)</strong> and <strong>LR+WOE (baseline)</strong>. Inference defaults to primary. XGBoost is backup only — not in phase-1 scope.</div>
+
+<div class="mermaid">
+flowchart TB
+  subgraph PUL[Personal Unsecured Loan]
+    S1[Positives 12M]-->N1[Negatives: eligible non-converters]
+    N1-->D1[60/20/20 + OOT]
+    D1-->L1[LR+WOE]
+    D1-->G1[LightGBM]
+    L1-->R1[Registry]
+    G1-->R1
+  end
+  subgraph ML[Mortgage / Business Loan]
+    S2[Positives 24M]-->N2[Negatives]
+    N2-->D2[60/20/20 + OOT]
+    D2-->L2[LR+WOE]
+    D2-->G2[LightGBM]
+    L2-->R2[Registry]
+    G2-->R2
+  end
+</div>
+
+<h3>6.1 Sample Semantics</h3>
+<ul>
+<li>Positives: approved + disbursed, controlled delinquency, observation tenure met</li>
+<li>Negatives: eligible customers who <strong>had opportunity but did not convert</strong> — not “bad customers”</li>
+<li>Exclusions: employees, test accounts, closed/deceased, hard ineligibility</li>
+</ul>
+
+<h3>6.2 Evaluation</h3>
+<table>
+<tr><th>Dimension</th><th>Metric</th><th>Use</th></tr>
+<tr><td>Ranking</td><td>AUC / AP (Test+OOT)</td><td>Diagnostic</td></tr>
+<tr><td>Discrimination</td><td>KS</td><td>Diagnostic</td></tr>
+<tr><td>Business</td><td>Lift@Top20% (reference ≥1.2)</td><td>Business acceptance reference</td></tr>
+<tr><td>Stability</td><td>Monthly PSI</td><td>Alert if &gt;0.25</td></tr>
+<tr><td>Final success</td><td>A/B / funnel lift</td><td>Go-live acceptance</td></tr>
+</table>
+</section>
+
+<section id="ch7">
+<h2>7. Database Design</h2>
+<div class="mermaid">
+erDiagram
+  product_model ||--o{ model_registry : has
+  product_model ||--o{ lookalike_process : configures
+  lookalike_process ||--o{ process_version : runs
+  process_version ||--o{ scoring_result : scores
+  process_version ||--o{ analysis_snapshot : snapshot
+  process_version ||--o{ export_history : exports
+  lookalike_process ||--o{ audit_log : audits
+</div>
+
+<h3>7.1 Core Tables</h3>
+<table>
+<tr><th>Table</th><th>Purpose</th><th>Phase</th></tr>
+<tr><td>product_model / seed_definition</td><td>Product & seed rules</td><td>P1</td></tr>
+<tr><td>feature_catalog</td><td>71+24 master data</td><td>P1</td></tr>
+<tr><td>model_registry</td><td>Model versions & artifacts</td><td>P1</td></tr>
+<tr><td>lookalike_process / process_version</td><td>Process & immutable runs</td><td>P1 (MVP in-memory)</td></tr>
+<tr><td>scoring_result</td><td>customer_key + score + rank</td><td>P1</td></tr>
+<tr><td>analysis_snapshot</td><td>Histogram & pre-aggregates</td><td>P1</td></tr>
+<tr><td>export_history / audit_log</td><td>Exports & audit</td><td>P1</td></tr>
+<tr><td>recurring_schedule / psi_monitoring</td><td>Schedules & PSI</td><td>P2</td></tr>
+</table>
+
+<div class="callout callout-warn"><strong>Cost rule:</strong> scoring_result does not store full feature JSONB by default. Partition by version_id; raw scores retained 90 days by default.</div>
+</section>
+
+<section id="ch8">
+<h2>8. API Design</h2>
+<h3>8.1 BRD FR Mapping</h3>
+<table>
+<tr><th>BRD</th><th>Capability</th><th>MVP</th><th>P1+</th></tr>
+<tr><td>FR-01/02</td><td>Process management/create</td><td>In-memory Process API</td><td>Persisted CRUD/duplicate/retry</td></tr>
+<tr><td>FR-03/04</td><td>Sample/Potential</td><td>CSV upload</td><td>Segment/entire base</td></tr>
+<tr><td>FR-05</td><td>Feature analysis</td><td>/eda /features/analyze</td><td>Seed/candidate analysis</td></tr>
+<tr><td>FR-06</td><td>Generate</td><td>/lookalike/score; /processes/{id}/generate</td><td>Async versioned generate</td></tr>
+<tr><td>FR-07</td><td>Dashboard</td><td>/dashboard; /versions/{vid}/dashboard</td><td>Histogram slider</td></tr>
+<tr><td>FR-08/09</td><td>Conversion/Audit</td><td>—</td><td>P1/P2</td></tr>
+</table>
+
+<h3>8.2 Key Endpoints</h3>
+<pre><code>POST /api/v1/eda
+POST /api/v1/features/analyze
+POST /api/v1/model/train
+POST /api/v1/lookalike/score
+GET  /api/v1/dashboard
+POST /api/v1/processes
+POST /api/v1/processes/{id}/candidates/upload
+POST /api/v1/processes/{id}/generate
+GET  /api/v1/versions/{vid}
+GET  /api/v1/versions/{vid}/dashboard
+# P1/P2: segment, full-base, export, recurring, conversion, audit</code></pre>
+
+<p>Rules: threshold is never a Create input; Generate returns version_id; deprecate legacy endpoints one major version after process resources land.</p>
+</section>
+
+<section id="ch9">
+<h2>9. Service Layer Design</h2>
+<pre><code>src/lookalike/
+  adapters/          # Feature Adapter + denylist (implemented)
+  domain/            # Process/Version store (MVP memory / P1 PG)
+  pipeline/          # Train/score orchestration
+  features/ modeling/ preprocessing/ eda/
+  workers/           # async generate jobs
+  api/               # evolving router split
+  integrations/      # CDP/PMS/CRM (P2)</code></pre>
+
+<div class="grid-2">
+  <div class="card"><div class="card-title">FeatureEngineeringService</div>Quality screening, WOE/IV, leakage audit, cold-start filter</div>
+  <div class="card"><div class="card-title">ScoringService</div>Batch inference, histogram precompute, version writes (key+score only)</div>
+  <div class="card"><div class="card-title">ProcessService</div>Lifecycle, candidate attach, Generate trigger</div>
+  <div class="card"><div class="card-title">DashboardService</div>Snapshot / histogram / top scores / rule-template insights</div>
+</div>
+</section>
+
+<section id="ch10">
+<h2>10. Frontend & UI/UX (P2)</h2>
+<div class="callout callout-warn">Full 8-screen UI is <strong>P2</strong>. Freeze Generate / Dashboard / Export JSON contracts before building Ant Design Pro screens.</div>
+<table>
+<tr><th>BRD Screen</th><th>Route</th><th>Notes</th></tr>
+<tr><td>Process List</td><td>/lookalike/processes</td><td>Status, duplicate, retry</td></tr>
+<tr><td>Create Process</td><td>/lookalike/processes/create</td><td>No threshold input; optional Recurring</td></tr>
+<tr><td>Product Model Info</td><td>/.../model</td><td>Version, features, KS/AUC</td></tr>
+<tr><td>Candidate Upload / Entire Base</td><td>/.../candidates</td><td>Validation counts, confirm + ETA</td></tr>
+<tr><td>Generation Result</td><td>/versions/{vid}/dashboard</td><td>Distribution, importance, 360 compare</td></tr>
+<tr><td>Large File Download</td><td>/.../export</td><td>Force split when &gt;10,000 rows</td></tr>
+<tr><td>Conversion</td><td>/lookalike/reporting</td><td>Funnel & iteration compare</td></tr>
+</table>
+<p>Threshold slider uses a precomputed 100-bin histogram summed locally — no model re-run.</p>
+</section>
+
+<section id="ch11">
+<h2>11. Inference & Scoring Pipeline</h2>
+<ol>
+<li>Load deployed primary model + feature_list</li>
+<li>Identity mapping; filter unmapped / cold-start / hard-ineligible</li>
+<li>Adapter → clean → batch predict_proba as Similarity Score</li>
+<li>Write scoring_result (key+score+rank) and analysis_snapshot (histogram…)</li>
+<li>Dashboard/Export filter by threshold without re-scoring</li>
+</ol>
+<pre><code>count(score &gt;= t) = sum(histogram.counts[i] for bin_i &gt;= t)</code></pre>
+</section>
+
+<section id="ch12">
+<h2>12. Background Tasks & Scheduling</h2>
+<table>
+<tr><th>Job</th><th>MVP</th><th>P1/P2</th></tr>
+<tr><td>Generate scoring</td><td>FastAPI BackgroundTasks</td><td>Celery workers</td></tr>
+<tr><td>Split export</td><td>—</td><td>Async job + object storage</td></tr>
+<tr><td>Recurring</td><td>—</td><td>Celery Beat; one Version per run</td></tr>
+<tr><td>PSI monitoring</td><td>—</td><td>Scheduled; alert if &gt;0.25</td></tr>
+</table>
+<p>Entire-base scoring requires double confirm, off-peak windows, concurrency caps, and queue isolation.</p>
+</section>
+
+<section id="ch13">
+<h2>13. Security, Compliance & Fairness</h2>
+<ul>
+<li>P1: enterprise SSO/OIDC; RBAC (Marketing / DS / Admin / Auditor)</li>
+<li>Short-lived signed export URLs; immutable audit log</li>
+<li>Fairness monitoring by gender / age_band / region response differentials</li>
+<li>Sensitive features excluded from external explanation copy by default</li>
+<li>Third-party data under contract and minimization principles</li>
+</ul>
+</section>
+
+<section id="ch14">
+<h2>14. Model Monitoring & Retraining</h2>
+<ul>
+<li>Monthly PSI; feature/score PSI &gt; 0.25 → alert ticket, no blind traffic cutover</li>
+<li>Retrain requires human Approve; canary 30% → 50% → 100% with rollback</li>
+<li>Registry states: training → validated → deployed → retired</li>
+</ul>
+</section>
+
+<section id="ch15">
+<h2>15. Deployment & CI/CD</h2>
+<pre><code># P1 target topology (illustrative)
+api / worker / beat / postgres / redis / minio / (frontend in P2)</code></pre>
+<ul>
+<li>CI: lint, unit tests, leakage denylist tests, image build</li>
+<li>CD: ship API/workers first, then frontend; decouple model artifact release from app release</li>
+</ul>
+</section>
+
+<section id="ch16">
+<h2>16. Non-Functional Requirements</h2>
+<table>
+<tr><th>Item</th><th>Target</th></tr>
+<tr><td>Health check</td><td>P95 &lt; 200ms</td></tr>
+<tr><td>Dashboard read</td><td>P95 &lt; 500ms (snapshot)</td></tr>
+<tr><td>Scoring throughput</td><td>Batches 5k–50k, parallelizable</td></tr>
+<tr><td>Export</td><td>≤10,000 rows/file; split beyond</td></tr>
+<tr><td>Availability</td><td>API 99.5% monthly from P1</td></tr>
+</table>
+</section>
+
+<section id="ch17">
+<h2>17. Delivery & RACI</h2>
+<table>
+<tr><th>Milestone</th><th>Scope</th><th>Primary roles</th></tr>
+<tr><td>M1 MVP</td><td>Adapter/denylist/train-score APIs</td><td>DS + Backend (R); PO (A)</td></tr>
+<tr><td>M2 P1</td><td>Process/async/PG/export/audit</td><td>Backend (R); DS (C)</td></tr>
+<tr><td>M3 P2</td><td>8 UI screens + CDP/PMS + Recurring</td><td>Frontend+Backend (R); Marketing (A)</td></tr>
+<tr><td>M4 Business acceptance</td><td>A/B, Lift, funnel</td><td>Marketing (R); Risk/DS (C)</td></tr>
+</table>
+</section>
+
+<section id="ch18">
+<h2>18. Risk Assessment</h2>
+<table>
+<tr><th>Risk</th><th>Level</th><th>Mitigation</th></tr>
+<tr><td>Phase-1 scope explosion</td><td>High</td><td>Enforce MVP→P1→P2</td></tr>
+<tr><td>Wide feature table not ready</td><td>High</td><td>Adapter + current CSV</td></tr>
+<tr><td>Score storage blow-up</td><td>Med</td><td>No full-feature JSONB; TTL</td></tr>
+<tr><td>Training leakage</td><td>High</td><td>Denylist + CI tests</td></tr>
+<tr><td>Entire-base scoring overload</td><td>Med</td><td>Concurrency caps, off-peak, queue isolation</td></tr>
+<tr><td>Metric disputes</td><td>Med</td><td>Pre-sign Lift/A/B acceptance pack</td></tr>
+</table>
+
+<h3>18.1 ADR Summary</h3>
+<ol>
+<li>Primary inference model = LightGBM; LR for explainability/compliance only.</li>
+<li>Threshold never enters Create Process.</li>
+<li>Training and Generate are decoupled.</li>
+<li>scoring_result stores key+score by default.</li>
+<li>Full frontend is P2.</li>
+</ol>
+</section>
+
+<p class="footer">Lookalike Intelligent Marketing Model — Detailed Design v2.1 · Lookalike Audience & Lead Generation · Aug 2026</p>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</body>
+</html>

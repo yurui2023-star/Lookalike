@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookalike 智能营销模型 — 详细设计说明书 v2.1</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:#fff; --bg2:#f7f8fa; --bg3:#f0f1f3; --text:#1a1a2e; --muted:#6b7280;
+    --border:#e5e7eb; --strong:#d1d5db; --accent:#0f6e56; --accent-bg:#e1f5ee;
+    --blue:#185fa5; --blue-bg:#e6f1fb; --amber:#854f0b; --amber-bg:#faeeda;
+    --red:#a32d2d; --red-bg:#fcebeb; --coral:#d85a30; --r:8px; --rl:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',Arial,sans-serif;background:var(--bg3);color:var(--text);line-height:1.7;font-size:14px}
+  .container{max-width:1100px;margin:0 auto;padding:24px}
+  .doc-header{background:linear-gradient(135deg,#0f6e56,#0b5442);color:#fff;padding:40px 32px;border-radius:var(--rl);margin-bottom:24px}
+  .doc-header h1{font-size:26px;font-weight:600;margin-bottom:8px}
+  .doc-header .subtitle{opacity:.9;margin-bottom:18px}
+  .doc-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px}
+  .doc-meta .label{opacity:.65;display:block}
+  .toc,section{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:28px 32px;margin-bottom:18px}
+  .toc h2,section>h2{font-size:20px;border-bottom:2px solid var(--accent);padding-bottom:8px;margin-bottom:16px}
+  h3{font-size:16px;margin:18px 0 10px}
+  h4{font-size:14px;margin:12px 0 8px}
+  p,li{margin-bottom:8px}
+  ul,ol{padding-left:22px;margin-bottom:12px}
+  a{color:var(--accent)}
+  code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--coral)}
+  pre{background:#1e2430;color:#e8eaed;padding:14px;border-radius:var(--r);overflow-x:auto;margin-bottom:14px;font-size:12px;line-height:1.5}
+  pre code{background:none;color:inherit;padding:0}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+  th{background:var(--bg2);text-align:left;padding:9px 10px;border-bottom:2px solid var(--strong);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .badge-mvp{background:var(--accent-bg);color:var(--accent)}
+  .badge-p1{background:var(--blue-bg);color:var(--blue)}
+  .badge-p2{background:var(--amber-bg);color:var(--amber)}
+  .callout{border-left:4px solid;padding:12px 14px;margin-bottom:14px;border-radius:0 var(--r) var(--r) 0;font-size:13px}
+  .callout-info{border-color:var(--blue);background:var(--blue-bg)}
+  .callout-warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout-ok{border-color:var(--accent);background:var(--accent-bg)}
+  .callout-danger{border-color:var(--red);background:var(--red-bg)}
+  .mermaid{text-align:center;margin:12px 0 16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+  .card-title{font-weight:600;margin-bottom:6px}
+  .stat-row{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0}
+  .stat .num{font-size:22px;font-weight:700;color:var(--accent)}
+  .stat .label{font-size:12px;color:var(--muted)}
+  .footer{text-align:center;color:var(--muted);margin:20px 0 40px;font-size:12px}
+  @media(max-width:800px){.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="doc-header">
+  <h1>Lookalike 智能营销模型 — 详细设计说明书 v2.1</h1>
+  <div class="subtitle">完整详细设计定稿（中文版）· 分阶段交付 · 在线/离线分离 · 对齐现有 FastAPI + LightGBM 仓库</div>
+  <div class="doc-meta"><div><span class="label">版本</span><strong>2.1 Complete</strong></div><div><span class="label">语言</span><strong>中文</strong></div><div><span class="label">日期</span><strong>2026-08</strong></div><div><span class="label">BRD</span><strong>Lookalike Audience & Lead Generation</strong></div><div><span class="label">仓库</span><strong>yurui2023-star/Lookalike</strong></div></div>
+</div>
+<div class="toc"><h2>目录</h2><ol><li><a href="#ch1">1. 设计概述与原则</a></li><li><a href="#ch2">2. 业务架构（Smart Sales 五层）</a></li><li><a href="#ch3">3. 系统架构与分阶段交付</a></li><li><a href="#ch4">4. 数据资产设计（71+24 与 Adapter）</a></li><li><a href="#ch5">5. 特征工程流水线</a></li><li><a href="#ch6">6. 模型训练设计（双产品双轨）</a></li><li><a href="#ch7">7. 数据库设计</a></li><li><a href="#ch8">8. API 接口设计</a></li><li><a href="#ch9">9. 服务层设计</a></li><li><a href="#ch10">10. 前端与 UI/UX（P2）</a></li><li><a href="#ch11">11. 推理与打分流水线</a></li><li><a href="#ch12">12. 后台任务与调度</a></li><li><a href="#ch13">13. 安全、合规与公平性</a></li><li><a href="#ch14">14. 模型监控与重训</a></li><li><a href="#ch15">15. 部署与 CI/CD</a></li><li><a href="#ch16">16. 非功能性需求</a></li><li><a href="#ch17">17. 项目交付与 RACI</a></li><li><a href="#ch18">18. 风险评估</a></li></ol></div>
+
+<section id="ch1">
+<h2>1. 设计概述与原则</h2>
+<div class="callout callout-ok">本文档为 <strong>Lookalike 详细设计定稿 v2.1</strong>：在 BRD 目标能力不变的前提下，采用「MVP → P1 → P2」分阶段落地，并与现有 FastAPI + LightGBM 仓库对齐。完整前端与外部系统集成属于 P2。</div>
+
+<h3>1.1 产品目标</h3>
+<p>Lookalike Audience &amp; Lead Generation 是 Smart Sale CDP 中的 AI 扩客能力：基于产品 Project Model 的种子客群（Sample），对候选客群（Potential）计算 Similarity Score（0–1），输出可运营的 Lookalike 集合、特征重要性与 Dashboard，支持导出/Segment，并可跟踪转化。</p>
+
+<h3>1.2 设计原则</h3>
+<ol>
+<li><strong>分数与阈值分离</strong>：创建 Process 不采集 Similarity Threshold；Generate 对 100% 有效候选打分；阈值仅用于 Dashboard / Export。</li>
+<li><strong>版本不可变</strong>：每次运行生成独立 Version，配置快照冻结。</li>
+<li><strong>训练与打分解耦</strong>：Offline 训练写入 Model Registry；Online Generate 只加载已部署模型。</li>
+<li><strong>时间泄漏零容忍</strong>：训练前强制 denylist 审计，命中即失败。</li>
+<li><strong>双模型独立</strong>：每产品 LightGBM（主）+ LR+WOE（可解释基线）。</li>
+<li><strong>冷启动排除</strong>：无交易/无 App 行为客户不进入 Lookalike 覆盖。</li>
+<li><strong>指标不作硬门禁</strong>：AUC/KS 为诊断；业务成功以 Lift / A/B 为准。</li>
+</ol>
+
+<h3>1.3 技术栈（按阶段）</h3>
+<table>
+<tr><th>层级</th><th>MVP</th><th>P1</th><th>P2（目标态）</th></tr>
+<tr><td>后端</td><td>Python 3.11 + FastAPI</td><td>+ OIDC、Process API</td><td>+ 网关限流</td></tr>
+<tr><td>ML</td><td>LightGBM + IV/var_filter</td><td>+ LR/WOE、Registry</td><td>+ PSI/重训任务</td></tr>
+<tr><td>存储</td><td>本地文件 / 内存 Process Store</td><td>PostgreSQL 15、对象存储</td><td>分区归档</td></tr>
+<tr><td>任务</td><td>BackgroundTasks</td><td>Celery + Redis</td><td>+ Beat Recurring</td></tr>
+<tr><td>前端</td><td>Swagger / CLI</td><td>可选轻量控制台</td><td>React 18 + Ant Design Pro</td></tr>
+<tr><td>监控</td><td>日志 + 指标快照</td><td>基础告警</td><td>Prometheus + Grafana</td></tr>
+</table>
+</section>
+
+<section id="ch2">
+<h2>2. 业务架构（Smart Sales 五层）</h2>
+<div class="mermaid">
+flowchart TB
+  subgraph L5[分析治理层]
+    AC[分析中心 Lookalike]
+    AOC[自动化运营中心]
+  end
+  subgraph L4[触达执行层]
+    TC[触达渠道]
+    PE[流程引擎]
+  end
+  subgraph L3[营销策略层]
+    SC[策略中心]
+    CC[内容推荐中心]
+  end
+  subgraph L2[客户理解层]
+    LC[标签中心]
+    PC[画像中心 Segment/360]
+  end
+  subgraph L1[数据基础层]
+    DC[数据中心]
+  end
+  L1-->L2-->L3-->L4
+  L2-.->AC
+  AC-->|扩客结果|L3
+  L4-.->|转化反馈|L5
+</div>
+
+<h3>2.1 Lookalike 定位</h3>
+<table>
+<tr><th>项</th><th>说明</th></tr>
+<tr><td>所在层</td><td>分析治理层 · 分析中心</td></tr>
+<tr><td>定位</td><td>扩客分析与决策支持工具，不是独立营销执行系统</td></tr>
+<tr><td>输入</td><td>种子（Segment/上传）、候选（文件/Segment/全量客户）</td></tr>
+<tr><td>输出</td><td>Similarity Score、特征/事件重要性、Dashboard、导出/Segment</td></tr>
+<tr><td>上游</td><td>画像中心、标签中心、Project Model</td></tr>
+<tr><td>下游</td><td>策略中心、可选 CRM、导出文件</td></tr>
+</table>
+
+<h3>2.2 核心职责</h3>
+<ul>
+<li>种子质量评估与特征重要性分析（FR-05）</li>
+<li>候选全量打分与结果版本管理（FR-06）</li>
+<li>Dashboard、阈值筛选、导出拆分（FR-07）</li>
+<li>转化跟踪与迭代对比（FR-08，P2）</li>
+<li>审计日志（FR-09，P1+）</li>
+</ul>
+</section>
+
+<section id="ch3">
+<h2>3. 系统架构与分阶段交付</h2>
+<div class="stat-row">
+  <div class="stat"><div class="num">MVP</div><div class="label">现有仓库增强</div></div>
+  <div class="stat"><div class="num">P1</div><div class="label">可运营后端</div></div>
+  <div class="stat"><div class="num">P2</div><div class="label">全栈与集成</div></div>
+</div>
+
+<div class="mermaid">
+flowchart LR
+  subgraph Offline[离线训练平面]
+    DS[数仓/特征表]-->FE[特征工程+泄漏审计]
+    FE-->TR[训练 LR+LGB]
+    TR-->REG[(Model Registry)]
+  end
+  subgraph Online[在线服务平面]
+    UI[UI/客户端]-->API[FastAPI]
+    API-->SC[打分 Worker]
+    REG-->SC
+    API-->DB[(PostgreSQL)]
+    SC-->DB
+    SC-->RD[(Redis 直方图)]
+  end
+  CDP[CDP 只读]-->API
+  PMS[PMS]-->REG
+</div>
+
+<table>
+<tr><th>阶段</th><th>范围</th><th>不做</th><th>验收</th></tr>
+<tr><td><span class="badge badge-mvp">MVP</span></td><td>Adapter、denylist、EDA、训练、同步/异步打分、Dashboard JSON</td><td>React、Celery、CDP 实时</td><td>真实 CSV 可训可打；单测通过</td></tr>
+<tr><td><span class="badge badge-p1">P1</span></td><td>Process/Version、PG、异步任务、导出拆分、Audit、OIDC</td><td>完整 8 屏、CRM</td><td>Create→Generate→Dashboard→Export 闭环</td></tr>
+<tr><td><span class="badge badge-p2">P2</span></td><td>React 8 屏、CDP/PMS、Recurring、Conversion、Mortgage 24 特征</td><td>—</td><td>双产品上线；A/B 可量化</td></tr>
+</table>
+
+<h3>3.1 外部系统</h3>
+<table>
+<tr><th>系统</th><th>用途</th><th>方向</th><th>阶段</th></tr>
+<tr><td>CDP</td><td>按 HostCif 拉取客户画像</td><td>只读</td><td>P2</td></tr>
+<tr><td>AI Model / Project Model</td><td>产品模型元数据、KS/AUC</td><td>只读</td><td>P1</td></tr>
+<tr><td>PMS</td><td>产品目录与发布通知</td><td>读+通知</td><td>P2</td></tr>
+<tr><td>CRM</td><td>可选线索推送</td><td>条件写</td><td>P2</td></tr>
+<tr><td>通知系统</td><td>完成/导出通知</td><td>写</td><td>P1+</td></tr>
+</table>
+</section>
+
+<section id="ch4">
+<h2>4. 数据资产设计（71+24 与 Adapter）</h2>
+<div class="callout callout-warn">当前仓库生产数据为 <code>Bank_Marketing_Dataset.csv</code>（约 10 万行 / 45 列）。BRD 71+24 特征通过 <strong>Feature Adapter</strong> 桥接，禁止在业务代码散落硬编码列名。</div>
+
+<h3>4.1 三层特征视图</h3>
+<table>
+<tr><th>层</th><th>内容</th><th>启用阶段</th></tr>
+<tr><td>L0</td><td>当前 CSV 实际字段</td><td>MVP</td></tr>
+<tr><td>L1</td><td>核心 71 特征（含 MB 增补 61–71）</td><td>P1 宽表就绪</td></tr>
+<tr><td>L2</td><td>抵押可选 24（结算/对手方）</td><td>P2 Mortgage</td></tr>
+</table>
+
+<h3>4.2 核心 71 特征分组摘要</h3>
+<table>
+<tr><th>组</th><th>数量</th><th>内容</th></tr>
+<tr><td>A. 人口统计</td><td>8</td><td>年龄、性别、婚姻、教育、职业、地区等</td></tr>
+<tr><td>B. 银行关系</td><td>18</td><td>余额、产品数、持有标志、关系时长等</td></tr>
+<tr><td>C. 信贷行为</td><td>8</td><td>额度、评分、DTI、NPL 等</td></tr>
+<tr><td>D. 收入财务</td><td>8</td><td>薪资、可支配收入、储蓄率、流动性等</td></tr>
+<tr><td>E. 交易行为</td><td>8</td><td>波动、支出结构、跨境等</td></tr>
+<tr><td>F. App 行为</td><td>8</td><td>登录、会话、贷款页/计算器等高意向信号</td></tr>
+<tr><td>G. 消费信贷偏好</td><td>2</td><td>分期、保险</td></tr>
+<tr><td>MB 增补</td><td>11</td><td>CASA/定存、卡片消费、App 活跃、DTI、NPL</td></tr>
+</table>
+
+<h3>4.3 抵押可选 24</h3>
+<p>结算账户现金流 11 项 + 对手方/集中度 13 项；仅在结算与对手方数据可用时启用。涉及 “Exclude same CIF” 的特征必须剔除同行同 CIF 内部转账。</p>
+
+<h3>4.4 ID 体系</h3>
+<table>
+<tr><th>ID</th><th>用途</th></tr>
+<tr><td>ClientID / HostCif</td><td>候选上传与 CDP 映射主键</td></tr>
+<tr><td>personal_cif / enterprise_cif</td><td>个人/对公统一客户号</td></tr>
+<tr><td>device_id</td><td>仅 App 事件关联，不进模型特征</td></tr>
+</table>
+
+<h3>4.5 Feature Adapter 契约</h3>
+<pre><code>class FeatureAdapter(Protocol):
+    def to_model_frame(raw, *, drop_id, rename_target, for_scoring) -&gt; DataFrame
+    def feature_list() -&gt; list[str]
+    def leakage_denylist() -&gt; list[str]
+    def extract_ids(raw) -&gt; list[str]
+    def cold_start_mask(raw) -&gt; Series
+
+# MVP: BankMarketingCsvAdapter
+# P1: WideTableAdapter(feature_catalog)
+# P2: MortgageOptionalMixin</code></pre>
+</section>
+
+<section id="ch5">
+<h2>5. 特征工程流水线</h2>
+<div class="mermaid">
+flowchart LR
+  A[抽取]-->B[同CIF剔除]
+  B-->C[冷启动过滤]
+  C-->D[缺失/同值/IV筛选]
+  D-->E[高偏度P99截断]
+  E-->F[时间泄漏审计]
+  F-->G[LR用WOE / LGB用原始]
+  G-->H[特征产物]
+</div>
+
+<h3>5.1 质量规则</h3>
+<table>
+<tr><th>规则</th><th>阈值</th><th>动作</th></tr>
+<tr><td>缺失率</td><td>&gt; 95%</td><td>剔除特征</td></tr>
+<tr><td>同值率</td><td>&gt; 95%</td><td>剔除特征</td></tr>
+<tr><td>IV</td><td>&lt; 0.02</td><td>剔除特征</td></tr>
+<tr><td>偏度</td><td>显著偏高</td><td>P99 截断</td></tr>
+<tr><td>缺失填补</td><td>—</td><td>数值中位数 / 类别众数</td></tr>
+</table>
+
+<h3>5.2 时间泄漏 denylist（强制失败）</h3>
+<ul>
+<li>放款后字段：当前贷款余额、放款日</li>
+<li>触达后结果、他模型输出分（如 <code>ResponsePropensity</code>）</li>
+<li>纯标识：CIF、证件号</li>
+<li>候选池内恒定的 eligibility 字段</li>
+</ul>
+<div class="callout callout-danger">任一 denylist 字段残留 → 训练/准备任务失败并写审计，禁止“警告后继续”。</div>
+
+<h3>5.3 冷启动</h3>
+<p>Observation Window 内交易次数=0 且 App 活跃天数=0 → 计入 <code>insufficient_data</code>，不打分。身份无法映射 → <code>unmapped</code>。</p>
+
+<h3>5.4 Event Importance / RFM</h3>
+<p>对窗口内各 Event 计算 Recency / Frequency / Monetary。Dashboard 同时展示静态 Feature Importance 与 Event Importance。MVP 可用模型 gain 近似；P1 补齐 RFM 报表。</p>
+</section>
+
+<section id="ch6">
+<h2>6. 模型训练设计（双产品双轨）</h2>
+<div class="callout callout-info">统一口径：每产品训练 <strong>LightGBM（primary）</strong> 与 <strong>LR+WOE（baseline）</strong>。推理默认 primary。XGBoost 仅作备选，不入一期。</div>
+
+<div class="mermaid">
+flowchart TB
+  subgraph PUL[个人信用贷]
+    S1[正样本12M]-->N1[负样本:合格未转化]
+    N1-->D1[60/20/20+OOT]
+    D1-->L1[LR+WOE]
+    D1-->G1[LightGBM]
+    L1-->R1[Registry]
+    G1-->R1
+  end
+  subgraph ML[按揭/经营贷]
+    S2[正样本24M]-->N2[负样本]
+    N2-->D2[60/20/20+OOT]
+    D2-->L2[LR+WOE]
+    D2-->G2[LightGBM]
+    L2-->R2[Registry]
+    G2-->R2
+  end
+</div>
+
+<h3>6.1 样本语义</h3>
+<ul>
+<li>正样本：已获批放款、逾期可控、满足观察期</li>
+<li>负样本：<strong>有机会但未转化</strong>的合格客群，不是“坏客户”</li>
+<li>排除：员工/测试/销户/身故/硬性不合格</li>
+</ul>
+
+<h3>6.2 评估</h3>
+<table>
+<tr><th>维度</th><th>指标</th><th>用途</th></tr>
+<tr><td>排序</td><td>AUC / AP（Test+OOT）</td><td>诊断</td></tr>
+<tr><td>区分</td><td>KS</td><td>诊断</td></tr>
+<tr><td>业务</td><td>Lift@Top20%（参考 ≥1.2）</td><td>业务验收参考</td></tr>
+<tr><td>稳定</td><td>PSI（上线后月度）</td><td>&gt;0.25 告警</td></tr>
+<tr><td>最终成功</td><td>A/B / 漏斗提升</td><td>上线验收</td></tr>
+</table>
+</section>
+
+<section id="ch7">
+<h2>7. 数据库设计</h2>
+<div class="mermaid">
+erDiagram
+  product_model ||--o{ model_registry : has
+  product_model ||--o{ lookalike_process : configures
+  lookalike_process ||--o{ process_version : runs
+  process_version ||--o{ scoring_result : scores
+  process_version ||--o{ analysis_snapshot : snapshot
+  process_version ||--o{ export_history : exports
+  lookalike_process ||--o{ audit_log : audits
+</div>
+
+<h3>7.1 核心表</h3>
+<table>
+<tr><th>表</th><th>用途</th><th>阶段</th></tr>
+<tr><td>product_model / seed_definition</td><td>产品与种子规则</td><td>P1</td></tr>
+<tr><td>feature_catalog</td><td>71+24 主数据</td><td>P1</td></tr>
+<tr><td>model_registry</td><td>模型版本与产物</td><td>P1</td></tr>
+<tr><td>lookalike_process / process_version</td><td>流程与不可变运行</td><td>P1（MVP 内存实现）</td></tr>
+<tr><td>scoring_result</td><td>customer_key + score + rank</td><td>P1</td></tr>
+<tr><td>analysis_snapshot</td><td>直方图与预聚合</td><td>P1</td></tr>
+<tr><td>export_history / audit_log</td><td>导出与审计</td><td>P1</td></tr>
+<tr><td>recurring_schedule / psi_monitoring</td><td>调度与 PSI</td><td>P2</td></tr>
+</table>
+
+<div class="callout callout-warn"><strong>成本约束：</strong>scoring_result 默认不存全量 feature JSONB；明细按需物化。按 version_id 分区，原始分默认保留 90 天。</div>
+</section>
+
+<section id="ch8">
+<h2>8. API 接口设计</h2>
+<h3>8.1 BRD FR 映射</h3>
+<table>
+<tr><th>BRD</th><th>能力</th><th>MVP</th><th>P1+</th></tr>
+<tr><td>FR-01/02</td><td>Process 管理/创建</td><td>内存 Process API</td><td>持久化 CRUD/复制/重试</td></tr>
+<tr><td>FR-03/04</td><td>Sample/Potential</td><td>CSV 上传</td><td>Segment/全量</td></tr>
+<tr><td>FR-05</td><td>特征分析</td><td>/eda /features/analyze</td><td>种子/候选分析</td></tr>
+<tr><td>FR-06</td><td>Generate</td><td>/lookalike/score；/processes/{id}/generate</td><td>异步版本化</td></tr>
+<tr><td>FR-07</td><td>Dashboard</td><td>/dashboard；/versions/{vid}/dashboard</td><td>直方图滑条</td></tr>
+<tr><td>FR-08/09</td><td>转化/审计</td><td>—</td><td>P1/P2</td></tr>
+</table>
+
+<h3>8.2 关键端点（已实现 / 规划）</h3>
+<pre><code>POST /api/v1/eda
+POST /api/v1/features/analyze
+POST /api/v1/model/train
+POST /api/v1/lookalike/score
+GET  /api/v1/dashboard
+POST /api/v1/processes
+POST /api/v1/processes/{id}/candidates/upload
+POST /api/v1/processes/{id}/generate
+GET  /api/v1/versions/{vid}
+GET  /api/v1/versions/{vid}/dashboard
+# P1/P2 继续扩展：segment、full-base、export、recurring、conversion、audit</code></pre>
+
+<p>原则：阈值不进 Create；Generate 返回 version_id；旧端点在引入 process 资源后标记 deprecated 并保留一个大版本兼容。</p>
+</section>
+
+<section id="ch9">
+<h2>9. 服务层设计</h2>
+<pre><code>src/lookalike/
+  adapters/          # Feature Adapter + denylist（已实现）
+  domain/            # Process/Version store（MVP 内存 / P1 PG）
+  pipeline/          # 训练打分编排
+  features/ modeling/ preprocessing/ eda/
+  workers/           # generate 异步任务
+  api/               # 演进中的 router 拆分
+  integrations/      # CDP/PMS/CRM（P2）</code></pre>
+
+<div class="grid-2">
+  <div class="card"><div class="card-title">FeatureEngineeringService</div>质量筛选、WOE/IV、泄漏审计、冷启动过滤</div>
+  <div class="card"><div class="card-title">ScoringService</div>批量推理、直方图预计算、版本写入（仅 key+score）</div>
+  <div class="card"><div class="card-title">ProcessService</div>流程生命周期、候选挂载、Generate 触发</div>
+  <div class="card"><div class="card-title">DashboardService</div>snapshot / histogram / top scores / 规则模板洞察</div>
+</div>
+</section>
+
+<section id="ch10">
+<h2>10. 前端与 UI/UX（P2）</h2>
+<div class="callout callout-warn">完整 8 屏 UI 放在 <strong>P2</strong>。先冻结 Generate / Dashboard / Export JSON 契约，再铺 Ant Design Pro。</div>
+<table>
+<tr><th>BRD 屏</th><th>路由</th><th>要点</th></tr>
+<tr><td>Process List</td><td>/lookalike/processes</td><td>状态、复制、重试</td></tr>
+<tr><td>Create Process</td><td>/lookalike/processes/create</td><td>无阈值输入；可选 Recurring</td></tr>
+<tr><td>Product Model Info</td><td>/.../model</td><td>版本、特征、KS/AUC</td></tr>
+<tr><td>Candidate Upload / Entire Base</td><td>/.../candidates</td><td>校验计数、确认与估时</td></tr>
+<tr><td>Generation Result</td><td>/versions/{vid}/dashboard</td><td>分布、重要性、360 对比</td></tr>
+<tr><td>Large File Download</td><td>/.../export</td><td>&gt;10,000 行强制拆分</td></tr>
+<tr><td>Conversion</td><td>/lookalike/reporting</td><td>漏斗与迭代对比</td></tr>
+</table>
+<p>阈值滑条：使用预计算 100-bin 直方图在前端本地求和，不重跑模型。</p>
+</section>
+
+<section id="ch11">
+<h2>11. 推理与打分流水线</h2>
+<ol>
+<li>加载已部署 primary 模型与 feature_list</li>
+<li>候选身份映射；过滤 unmapped / cold-start / 硬性不合格</li>
+<li>Adapter → 清洗 → 批量 predict_proba 作为 Similarity Score</li>
+<li>写入 scoring_result（key+score+rank）与 analysis_snapshot（直方图等）</li>
+<li>Dashboard / Export 按阈值过滤，不重打分</li>
+</ol>
+<pre><code>count(score &gt;= t) = sum(histogram.counts[i] for bin_i &gt;= t)</code></pre>
+</section>
+
+<section id="ch12">
+<h2>12. 后台任务与调度</h2>
+<table>
+<tr><th>任务</th><th>MVP</th><th>P1/P2</th></tr>
+<tr><td>Generate 打分</td><td>FastAPI BackgroundTasks</td><td>Celery Worker</td></tr>
+<tr><td>导出拆分</td><td>—</td><td>异步任务 + 对象存储</td></tr>
+<tr><td>Recurring</td><td>—</td><td>Celery Beat；每跑一版</td></tr>
+<tr><td>PSI 监控</td><td>—</td><td>定时任务；&gt;0.25 告警工单</td></tr>
+</table>
+<p>全量客户库打分：二次确认、离峰窗口、并发限制、队列隔离。</p>
+</section>
+
+<section id="ch13">
+<h2>13. 安全、合规与公平性</h2>
+<ul>
+<li>P1：企业 SSO/OIDC；RBAC（Marketing / DS / Admin / Auditor）</li>
+<li>导出短时签名 URL；Audit Log 不可 UPDATE/DELETE</li>
+<li>公平性：按 gender / age_band / region 监控转化率差</li>
+<li>敏感特征默认不进入对外解释文案</li>
+<li>第三方数据按合同与最小化原则接入</li>
+</ul>
+</section>
+
+<section id="ch14">
+<h2>14. 模型监控与重训</h2>
+<ul>
+<li>月度 PSI；特征或分数 PSI &gt; 0.25 → 告警，不自动盲切流量</li>
+<li>重训需人工 Approve；Canary：30% → 50% → 100%，可回滚</li>
+<li>Registry 状态：training → validated → deployed → retired</li>
+</ul>
+</section>
+
+<section id="ch15">
+<h2>15. 部署与 CI/CD</h2>
+<pre><code># P1 目标拓扑（示意）
+api / worker / beat / postgres / redis / minio / (frontend P2)</code></pre>
+<ul>
+<li>CI：lint、单测、泄漏 denylist 测试、镜像构建</li>
+<li>CD：先 API/Worker，再前端；模型产物与应用版本解耦发布</li>
+</ul>
+</section>
+
+<section id="ch16">
+<h2>16. 非功能性需求</h2>
+<table>
+<tr><th>项</th><th>目标</th></tr>
+<tr><td>健康检查</td><td>P95 &lt; 200ms</td></tr>
+<tr><td>Dashboard 读取</td><td>P95 &lt; 500ms（读 snapshot）</td></tr>
+<tr><td>打分吞吐</td><td>批量 5k–50k，可并行</td></tr>
+<tr><td>导出</td><td>单文件 ≤ 10,000 行，超出拆分</td></tr>
+<tr><td>可用性</td><td>P1 起 API 99.5% 月可用</td></tr>
+</table>
+</section>
+
+<section id="ch17">
+<h2>17. 项目交付与 RACI</h2>
+<table>
+<tr><th>里程碑</th><th>内容</th><th>主要角色</th></tr>
+<tr><td>M1 MVP</td><td>Adapter/denylist/训练打分 API</td><td>DS + Backend（R）；PO（A）</td></tr>
+<tr><td>M2 P1</td><td>Process/异步/PG/导出/审计</td><td>Backend（R）；DS（C）</td></tr>
+<tr><td>M3 P2</td><td>前端 8 屏 + CDP/PMS + Recurring</td><td>Frontend+Backend（R）；Marketing（A）</td></tr>
+<tr><td>M4 业务验收</td><td>A/B、Lift、漏斗</td><td>Marketing（R）；Risk/DS（C）</td></tr>
+</table>
+</section>
+
+<section id="ch18">
+<h2>18. 风险评估</h2>
+<table>
+<tr><th>风险</th><th>等级</th><th>缓解</th></tr>
+<tr><td>一期范围过大</td><td>高</td><td>强制 MVP→P1→P2</td></tr>
+<tr><td>特征宽表未就绪</td><td>高</td><td>Adapter + 现有 CSV</td></tr>
+<tr><td>打分存储膨胀</td><td>中</td><td>不存全量特征 JSONB；TTL</td></tr>
+<tr><td>训练泄漏</td><td>高</td><td>denylist + CI 单测</td></tr>
+<tr><td>全量打分压垮集群</td><td>中</td><td>并发限额、离峰、队列隔离</td></tr>
+<tr><td>指标争议</td><td>中</td><td>业务 Lift/A/B 验收前置签字</td></tr>
+</table>
+
+<h3>18.1 决策记录（ADR）</h3>
+<ol>
+<li>推理主模型 = LightGBM；LR 仅解释/合规。</li>
+<li>阈值永不进入 Create Process。</li>
+<li>训练与 Generate 解耦。</li>
+<li>scoring_result 默认只存 key+score。</li>
+<li>完整前端放 P2。</li>
+</ol>
+</section>
+
+<p class="footer">Lookalike 智能营销模型 — 详细设计说明书 v2.1 · Lookalike Audience & Lead Generation · Aug 2026</p>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</body>
+</html>
