@@ -3,36 +3,75 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from lookalike import __version__
 from lookalike.config import ID_COL, OUTPUT_DIR, TARGET_COL
 from lookalike.data.sample_dataset import ensure_sample_dataset
+from lookalike.domain.process_store import get_process_store
 from lookalike.pipeline.service import get_pipeline, load_dataframe, prepare_modeling_frame
 from lookalike.schemas import (
     AnalyzeResponse,
+    CreateProcessRequest,
     DashboardSummary,
     EdaResponse,
     FeatureImportanceItem,
     FeatureIvRecord,
+    GenerateRequest,
     HealthResponse,
     LookalikeScoreResponse,
     MetricsSummary,
+    ProcessSummary,
     RemovedFeature,
     ScoredCustomer,
     TrainRequest,
     TrainResponse,
+    VersionDashboard,
+    VersionSummary,
 )
+from lookalike.workers.generate import run_generate_job
 
 app = FastAPI(
     title="Lookalike Audience & Lead Generation API",
     description=(
-        "Lookalike scoring platform aligned with BRD: EDA, feature importance (IV), "
-        "LightGBM training, and similarity scoring for 100% of candidate records."
+        "Lookalike scoring platform (Design v2.1 MVP+P1-lite): Feature Adapter, "
+        "leakage denylist, process versions, and async generate."
     ),
     version=__version__,
 )
+
+
+def _process_summary(record) -> ProcessSummary:
+    return ProcessSummary(
+        id=record.id,
+        name=record.name,
+        product=record.product,
+        candidate_source=record.candidate_source,
+        status=record.status,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+        latest_version_id=record.latest_version_id,
+        error_message=record.error_message,
+    )
+
+
+def _version_summary(record) -> VersionSummary:
+    return VersionSummary(
+        id=record.id,
+        process_id=record.process_id,
+        status=record.status,
+        progress=record.progress,
+        triggered_by=record.triggered_by,
+        created_at=record.created_at,
+        completed_at=record.completed_at,
+        error_message=record.error_message,
+        total_candidates=record.total_candidates,
+        valid_candidates=record.valid_candidates,
+        scored_candidates=record.scored_candidates,
+        cold_start_excluded=record.cold_start_excluded,
+        similarity_threshold=record.similarity_threshold,
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -51,6 +90,9 @@ def root() -> dict[str, object]:
             "train_model": "POST /api/v1/model/train",
             "score_candidates": "POST /api/v1/lookalike/score",
             "dashboard": "GET /api/v1/dashboard",
+            "processes": "GET|POST /api/v1/processes",
+            "generate": "POST /api/v1/processes/{id}/generate",
+            "version_dashboard": "GET /api/v1/versions/{vid}/dashboard",
         },
     }
 
@@ -60,7 +102,6 @@ async def run_eda(
     file: UploadFile | None = File(default=None),
     use_sample_data: bool = Query(default=True),
 ) -> EdaResponse:
-    """FR-05 support: generate Excel EDA report (Overview/Missing/Numeric/Categorical/Target)."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_path = OUTPUT_DIR / "eda_report.xlsx"
 
@@ -91,12 +132,15 @@ def download_eda_report() -> FileResponse:
     )
 
 
-def _load_training_frame(data_path: str | None) -> pd.DataFrame:
+def _load_training_frame(
+    data_path: str | None,
+    product: str = "bank_marketing_term_deposit",
+) -> pd.DataFrame:
     path = Path(data_path) if data_path else ensure_sample_dataset()
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"Training data not found: {path}")
     raw_df = load_dataframe(path)
-    return prepare_modeling_frame(raw_df)
+    return prepare_modeling_frame(raw_df, product=product)
 
 
 @app.post("/api/v1/features/analyze", response_model=AnalyzeResponse)
@@ -104,12 +148,11 @@ async def analyze_features(
     request: TrainRequest | None = None,
     file: UploadFile | None = File(default=None),
 ) -> AnalyzeResponse:
-    """FR-05: IV ranking and variable filtering for sample/seed data."""
     request = request or TrainRequest()
     if file is not None:
-        frame = prepare_modeling_frame(load_dataframe(await file.read()))
+        frame = prepare_modeling_frame(load_dataframe(await file.read()), product=request.product)
     else:
-        frame = _load_training_frame(request.data_path)
+        frame = _load_training_frame(request.data_path, product=request.product)
 
     pipeline = get_pipeline()
     result = pipeline.analyze_features(
@@ -131,12 +174,11 @@ async def train_model(
     request: TrainRequest | None = None,
     file: UploadFile | None = File(default=None),
 ) -> TrainResponse:
-    """Train LightGBM on sample data after cleaning, IV filtering (FR-05/FR-06)."""
     request = request or TrainRequest()
     if file is not None:
-        frame = prepare_modeling_frame(load_dataframe(await file.read()))
+        frame = prepare_modeling_frame(load_dataframe(await file.read()), product=request.product)
     else:
-        frame = _load_training_frame(request.data_path)
+        frame = _load_training_frame(request.data_path, product=request.product)
 
     pipeline = get_pipeline()
     result = pipeline.train(
@@ -169,7 +211,6 @@ async def score_lookalike_candidates(
         description="Optional post-scoring filter (BRD dashboard threshold).",
     ),
 ) -> LookalikeScoreResponse:
-    """FR-06: score 100% of candidate records; threshold filters results only."""
     pipeline = get_pipeline()
     if not pipeline.is_trained:
         frame = _load_training_frame(None)
@@ -197,12 +238,13 @@ async def score_lookalike_candidates(
         count_above_threshold=result["count_above_threshold"],
         scores=[ScoredCustomer(**row) for row in result["scores"]],
         matches=[ScoredCustomer(**row) for row in result["matches"]],
+        cold_start_excluded=result["cold_start_excluded"],
+        histogram=result["histogram"],
     )
 
 
 @app.get("/api/v1/dashboard", response_model=DashboardSummary)
 def dashboard_summary() -> DashboardSummary:
-    """FR-07: model quality metrics and feature importance snapshot."""
     pipeline = get_pipeline()
     metrics = None
     if pipeline.train_metrics:
@@ -219,6 +261,100 @@ def dashboard_summary() -> DashboardSummary:
             FeatureImportanceItem(**row) for row in pipeline.feature_importance_rows
         ],
         kept_features=pipeline.filtered_columns,
+    )
+
+
+# ----- Process lifecycle (Design v2.1 P1-lite) -----
+
+
+@app.get("/api/v1/processes", response_model=list[ProcessSummary])
+def list_processes() -> list[ProcessSummary]:
+    return [_process_summary(p) for p in get_process_store().list_processes()]
+
+
+@app.post("/api/v1/processes", response_model=ProcessSummary)
+def create_process(request: CreateProcessRequest) -> ProcessSummary:
+    record = get_process_store().create_process(name=request.name, product=request.product)
+    return _process_summary(record)
+
+
+@app.get("/api/v1/processes/{process_id}", response_model=ProcessSummary)
+def get_process(process_id: str) -> ProcessSummary:
+    record = get_process_store().get_process(process_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Process not found")
+    return _process_summary(record)
+
+
+@app.post("/api/v1/processes/{process_id}/candidates/upload", response_model=ProcessSummary)
+async def upload_candidates(process_id: str, file: UploadFile = File(...)) -> ProcessSummary:
+    store = get_process_store()
+    if store.get_process(process_id) is None:
+        raise HTTPException(status_code=404, detail="Process not found")
+    frame = load_dataframe(await file.read())
+    record = store.set_candidates(process_id, frame, source="file")
+    return _process_summary(record)
+
+
+@app.post("/api/v1/processes/{process_id}/generate", response_model=VersionSummary)
+def generate_lookalike(
+    process_id: str,
+    background_tasks: BackgroundTasks,
+    request: GenerateRequest | None = None,
+) -> VersionSummary:
+    """FR-06: async generate — scores 100% of attached candidates."""
+    request = request or GenerateRequest()
+    store = get_process_store()
+    process = store.get_process(process_id)
+    if process is None:
+        raise HTTPException(status_code=404, detail="Process not found")
+    if store.get_candidates(process_id) is None:
+        raise HTTPException(status_code=400, detail="Upload candidates before generate")
+    if not get_pipeline().is_trained:
+        raise HTTPException(
+            status_code=400,
+            detail="Train model first via POST /api/v1/model/train",
+        )
+
+    version = store.create_version(process_id, triggered_by="manual")
+    background_tasks.add_task(
+        run_generate_job,
+        process_id,
+        version.id,
+        similarity_threshold=request.similarity_threshold,
+    )
+    return _version_summary(version)
+
+
+@app.get("/api/v1/processes/{process_id}/versions", response_model=list[VersionSummary])
+def list_versions(process_id: str) -> list[VersionSummary]:
+    if get_process_store().get_process(process_id) is None:
+        raise HTTPException(status_code=404, detail="Process not found")
+    return [_version_summary(v) for v in get_process_store().list_versions(process_id)]
+
+
+@app.get("/api/v1/versions/{version_id}", response_model=VersionSummary)
+def get_version(version_id: str) -> VersionSummary:
+    version = get_process_store().get_version(version_id)
+    if version is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return _version_summary(version)
+
+
+@app.get("/api/v1/versions/{version_id}/dashboard", response_model=VersionDashboard)
+def version_dashboard(
+    version_id: str,
+    top_n: int = Query(default=20, ge=1, le=500),
+) -> VersionDashboard:
+    version = get_process_store().get_version(version_id)
+    if version is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    top_scores = [ScoredCustomer(**row) for row in version.scores[:top_n]]
+    return VersionDashboard(
+        version=_version_summary(version),
+        histogram=version.histogram,
+        snapshot=version.snapshot,
+        top_scores=top_scores,
     )
 
 

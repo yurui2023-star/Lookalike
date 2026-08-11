@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -18,6 +20,7 @@ class TrainRequest(BaseModel):
     test_size: float = Field(default=0.2, gt=0, lt=1)
     random_state: int = 42
     is_unbalance: bool = False
+    product: str = "bank_marketing_term_deposit"
 
 
 class MetricsSummary(BaseModel):
@@ -80,6 +83,8 @@ class LookalikeScoreResponse(BaseModel):
     count_above_threshold: int
     scores: list[ScoredCustomer]
     matches: list[ScoredCustomer]
+    cold_start_excluded: int = 0
+    histogram: dict | None = None
 
 
 class DashboardSummary(BaseModel):
@@ -87,3 +92,48 @@ class DashboardSummary(BaseModel):
     train_metrics: MetricsSummary | None = None
     feature_importance: list[FeatureImportanceItem] = Field(default_factory=list)
     kept_features: list[str] = Field(default_factory=list)
+
+
+class CreateProcessRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    product: str = "bank_marketing_term_deposit"
+
+
+class ProcessSummary(BaseModel):
+    id: str
+    name: str
+    product: str
+    candidate_source: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    latest_version_id: str | None = None
+    error_message: str | None = None
+
+
+class GenerateRequest(BaseModel):
+    # Threshold is NOT a create-process input; optional here only for version snapshot filter.
+    similarity_threshold: float | None = Field(default=None, ge=0, le=1)
+
+
+class VersionSummary(BaseModel):
+    id: str
+    process_id: str
+    status: str
+    progress: float
+    triggered_by: str
+    created_at: datetime
+    completed_at: datetime | None = None
+    error_message: str | None = None
+    total_candidates: int = 0
+    valid_candidates: int = 0
+    scored_candidates: int = 0
+    cold_start_excluded: int = 0
+    similarity_threshold: float | None = None
+
+
+class VersionDashboard(BaseModel):
+    version: VersionSummary
+    histogram: dict | None = None
+    snapshot: dict | None = None
+    top_scores: list[ScoredCustomer] = Field(default_factory=list)

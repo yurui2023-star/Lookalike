@@ -72,6 +72,22 @@ make lint
 - [`docs/DESIGN_OPTIMIZATION.md`](docs/DESIGN_OPTIMIZATION.md) — v2.0 → v2.1 change summary
 - [`docs/Lookalike_Detailed_Design_v2.html`](docs/Lookalike_Detailed_Design_v2.html) — original full-stack design (archived)
 
+## MVP + P1-lite (implemented)
+
+- **Feature Adapter** (`src/lookalike/adapters/`) maps Bank Marketing CSV → model frame
+- **Leakage denylist** hard-fails if fields like `ResponsePropensity` remain
+- **Process / Version** APIs with **async generate** (`BackgroundTasks`)
+- Full React UI is **P2** (not started)
+
+```bash
+# Process async flow
+curl -X POST localhost:8000/api/v1/model/train -H 'Content-Type: application/json' -d '{}'
+curl -X POST localhost:8000/api/v1/processes -H 'Content-Type: application/json' -d '{"name":"demo"}'
+# upload candidates, then:
+curl -X POST localhost:8000/api/v1/processes/{id}/generate -H 'Content-Type: application/json' -d '{}'
+curl localhost:8000/api/v1/versions/{vid}/dashboard
+```
+
 ## Data
 
 Production dataset: **`data/Bank_Marketing_Dataset.csv`**

@@ -2,7 +2,7 @@
 
 ### Product overview
 
-**Lookalike Audience & Lead Generation API** — implements BRD flows for EDA, feature IV analysis, LightGBM training on sample (seed) data, and similarity scoring of 100% of candidate records. Reference logic from `scripts/full_process.py` and `scripts/eda_report.py`.
+**Lookalike Audience & Lead Generation API** (Design v2.1 MVP + P1-lite): EDA, IV filtering, LightGBM training, Feature Adapter + leakage denylist, process versions with async generate. See `docs/Lookalike_Detailed_Design_v2.1_Optimized.html`.
 
 ### Services
 
@@ -10,7 +10,7 @@
 |---------|------|---------------|
 | Lookalike API | 8000 | `.venv/bin/lookalike-api` |
 
-No database required. Generated artifacts go to `output/` (EDA Excel).
+No database required for MVP/P1-lite (in-memory process store). Artifacts go to `output/`.
 
 ### First-time VM note
 
@@ -18,12 +18,6 @@ If `python3 -m venv .venv` fails, install once:
 
 ```bash
 sudo apt-get update && sudo apt-get install -y python3.12-venv
-```
-
-Generate sample CSV (or let the API create it on startup):
-
-```bash
-make data
 ```
 
 ### Lint / test / run
@@ -35,15 +29,25 @@ make test
 make run
 ```
 
-CLI pipelines:
+### Process async flow (P1-lite)
 
 ```bash
-make eda        # scripts/eda_report.py
-make pipeline   # scripts/full_process.py
+# 1) train
+curl -X POST localhost:8000/api/v1/model/train -H 'Content-Type: application/json' -d '{}'
+# 2) create process + upload candidates + generate
+curl -X POST localhost:8000/api/v1/processes -H 'Content-Type: application/json' -d '{"name":"demo"}'
+curl -X POST localhost:8000/api/v1/processes/{id}/candidates/upload -F file=@data/Bank_Marketing_Dataset.csv
+curl -X POST localhost:8000/api/v1/processes/{id}/generate -H 'Content-Type: application/json' -d '{}'
+# 3) poll version / dashboard
+curl localhost:8000/api/v1/versions/{vid}
+curl localhost:8000/api/v1/versions/{vid}/dashboard
 ```
+
+Async generate uses FastAPI `BackgroundTasks` (Celery reserved for full P1/P2).
 
 ### Gotchas
 
-- `POST /api/v1/lookalike/score` auto-trains using bundled sample data if no model is loaded yet.
-- Similarity threshold is a **post-scoring filter** (BRD): all candidates are scored; threshold only affects `matches` / dashboard counts.
-- LightGBM training uses the in-memory pipeline singleton; restarting the API clears the trained model.
+- Feature Adapter strips `ResponsePropensity` and `ClientID`; leakage denylist hard-fails if they remain.
+- Similarity threshold is a **post-scoring filter** only (not a create-process input).
+- In-memory process store resets when the API process restarts.
+- Full React frontend is **P2** — not in this codebase yet.

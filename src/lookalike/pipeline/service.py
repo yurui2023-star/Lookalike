@@ -4,13 +4,14 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
+from lookalike.adapters.bank_marketing import BankMarketingCsvAdapter, get_adapter
 from lookalike.config import (
     DEFAULT_IDENTICAL_LIMIT,
     DEFAULT_IV_LIMIT,
     DEFAULT_MISSING_LIMIT,
-    DROP_COLS,
     ID_COL,
     LABEL_COL,
     TARGET_COL,
@@ -40,22 +41,37 @@ def prepare_modeling_frame(
     drop_id: bool = True,
     drop_cols: list[str] | None = None,
     rename_target: bool = True,
+    product: str = "bank_marketing_term_deposit",
+    for_scoring: bool = False,
 ) -> pd.DataFrame:
-    """Drop ID/non-modeling columns and optionally rename target to label."""
-    frame = df.copy()
-    drop_cols = drop_cols if drop_cols is not None else DROP_COLS
-    to_drop = [c for c in ([ID_COL] if drop_id else []) + drop_cols if c in frame.columns]
-    if to_drop:
-        frame = frame.drop(columns=to_drop)
-    if rename_target and TARGET_COL in frame.columns:
-        frame = frame.rename(columns={TARGET_COL: LABEL_COL})
-    return frame
+    """Prepare modeling frame via Feature Adapter (Design v2.1)."""
+    adapter = get_adapter(product)
+    # drop_cols retained for backward compatibility but adapter owns denylist.
+    _ = drop_cols
+    return adapter.to_model_frame(
+        df,
+        drop_id=drop_id,
+        rename_target=rename_target,
+        for_scoring=for_scoring,
+    )
+
+
+def compute_score_histogram(scores: np.ndarray, bins: int = 100) -> dict[str, Any]:
+    """Pre-compute 0.01-resolution histogram for threshold slider (no re-score)."""
+    counts, edges = np.histogram(scores, bins=bins, range=(0.0, 1.0))
+    return {
+        "bins": edges.round(4).tolist(),
+        "counts": counts.astype(int).tolist(),
+        "resolution": round(1.0 / bins, 4),
+    }
 
 
 class LookalikePipeline:
     """End-to-end Lookalike pipeline aligned with BRD FR-05/FR-06."""
 
-    def __init__(self) -> None:
+    def __init__(self, product: str = "bank_marketing_term_deposit") -> None:
+        self.product = product
+        self.adapter: BankMarketingCsvAdapter = get_adapter(product)
         self.model = None
         self.target_col = LABEL_COL
         self.clean_report: dict[str, Any] | None = None
@@ -167,18 +183,21 @@ class LookalikePipeline:
         *,
         similarity_threshold: float | None = None,
         id_col: str = ID_COL,
+        exclude_cold_start: bool = True,
     ) -> dict[str, Any]:
         if not self.is_trained:
             raise RuntimeError("Model is not trained. Call train() first.")
 
         candidate_frame = candidates.copy()
-        ids = (
-            candidate_frame[id_col].astype(str).tolist()
-            if id_col in candidate_frame.columns
-            else [f"candidate-{index}" for index in range(len(candidate_frame))]
-        )
+        cold_mask = self.adapter.cold_start_mask(candidate_frame)
+        cold_start_excluded = int(cold_mask.sum()) if exclude_cold_start else 0
+        if exclude_cold_start and cold_mask.any():
+            candidate_frame = candidate_frame.loc[~cold_mask].reset_index(drop=True)
 
-        feature_frame = prepare_modeling_frame(candidate_frame, drop_id=True, rename_target=False)
+        ids = self.adapter.extract_ids(candidate_frame)
+        feature_frame = self.adapter.to_model_frame(
+            candidate_frame, drop_id=True, rename_target=False, for_scoring=True
+        )
         for col in self.filtered_columns:
             if col not in feature_frame.columns:
                 feature_frame[col] = 0
@@ -198,12 +217,16 @@ class LookalikePipeline:
         if similarity_threshold is not None:
             above_threshold = results[results["similarity_score"] >= similarity_threshold]
 
+        histogram = compute_score_histogram(results["similarity_score"].to_numpy())
         return {
             "total_scored": len(results),
+            "valid_candidates": len(results),
+            "cold_start_excluded": cold_start_excluded,
             "similarity_threshold": similarity_threshold,
             "count_above_threshold": len(above_threshold),
             "scores": results.to_dict(orient="records"),
             "matches": above_threshold.to_dict(orient="records"),
+            "histogram": histogram,
         }
 
     def run_eda(
