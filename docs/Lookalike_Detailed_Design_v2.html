@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookalike Intelligent Marketing Model - Detailed Design v2.0</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --bg-secondary: #f7f8fa; --bg-tertiary: #f0f1f3;
+    --text-primary: #1a1a2e; --text-secondary: #6b7280; --text-tertiary: #9ca3af;
+    --border: #e5e7eb; --border-strong: #d1d5db;
+    --accent: #534ab7; --accent-light: #eeedfe;
+    --blue: #185fa5; --blue-light: #e6f1fb;
+    --green: #0f6e56; --green-light: #e1f5ee;
+    --coral: #d85a30; --coral-light: #faece7;
+    --amber: #854f0b; --amber-light: #faeeda;
+    --red: #a32d2d; --red-light: #fcebeb;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: var(--bg-tertiary); color: var(--text-primary); line-height: 1.7; font-size: 14px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .doc-header { background: linear-gradient(135deg, #534ab7, #3c3489); color: white; padding: 48px 32px; border-radius: var(--radius-lg); margin-bottom: 32px; }
+  .doc-header h1 { font-size: 28px; font-weight: 600; margin-bottom: 12px; }
+  .doc-header .subtitle { font-size: 16px; opacity: 0.85; margin-bottom: 24px; }
+  .doc-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+  .doc-meta-item { font-size: 13px; }
+  .doc-meta-item .label { opacity: 0.6; display: block; margin-bottom: 2px; }
+  .doc-meta-item .value { font-weight: 500; }
+  .toc { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px 32px; margin-bottom: 32px; }
+  .toc h2 { font-size: 16px; margin-bottom: 12px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  section { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; margin-bottom: 24px; }
+  h2 { font-size: 22px; font-weight: 600; color: var(--text-primary); border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 20px; }
+  h3 { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-top: 24px; margin-bottom: 12px; }
+  h4 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-top: 16px; margin-bottom: 8px; }
+  p { margin-bottom: 12px; color: var(--text-primary); }
+  ul, ol { padding-left: 24px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; color: var(--coral); }
+  pre { background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius); overflow-x: auto; margin-bottom: 16px; border: 1px solid var(--border); }
+  pre code { background: none; padding: 0; color: var(--text-primary); font-size: 13px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  th { background: var(--bg-secondary); text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border-strong); font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--bg-secondary); }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .badge-new { background: var(--green-light); color: var(--green); }
+  .badge-updated { background: var(--blue-light); color: var(--blue); }
+  .badge-critical { background: var(--red-light); color: var(--red); }
+  .badge-warning { background: var(--amber-light); color: var(--amber); }
+  .callout { border-left: 4px solid; padding: 12px 16px; border-radius: 0 var(--radius) var(--radius) 0; margin-bottom: 16px; font-size: 13px; }
+  .callout-info { border-color: var(--blue); background: var(--blue-light); }
+  .callout-warning { border-color: var(--amber); background: var(--amber-light); }
+  .callout-danger { border-color: var(--red); background: var(--red-light); }
+  .callout-success { border-color: var(--green); background: var(--green-light); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+  .mermaid { text-align: center; margin-bottom: 16px; }
+  .stat-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 12px; color: var(--text-secondary); }
+  .scroll-x { overflow-x: auto; }
+  .anchor { display: block; position: relative; top: -80px; visibility: hidden; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>Lookalike Intelligent Marketing Model</h1>
+  <div class="subtitle">Detailed Design Document v2.0 — Optimized for BRD v2.4 (Data, Model & UI/UX)</div>
+  <div class="doc-meta">
+    <div class="doc-meta-item"><span class="label">Version</span><span class="value">2.0</span></div>
+    <div class="doc-meta-item"><span class="label">Date</span><span class="value">Aug 2026</span></div>
+    <div class="doc-meta-item"><span class="label">BRD Reference</span><span class="value">v2.4 (Jul 2026)</span></div>
+    <div class="doc-meta-item"><span class="label">Products</span><span class="value">Personal Unsecured Loan + Mortgage Loan</span></div>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#ch1">Design Overview & BRD Alignment</a></li>
+    <li><a href="#ch2">Business Architecture (5-Layer Smart Sales)</a></li>
+    <li><a href="#ch3">System Architecture</a></li>
+    <li><a href="#ch4">Data Asset Design (71 Core + 24 Optional Features)</a></li>
+    <li><a href="#ch5">Feature Engineering Pipeline</a></li>
+    <li><a href="#ch6">Model Training Design (Dual-Product Dual-Track)</a></li>
+    <li><a href="#ch7">Database Schema (ERD)</a></li>
+    <li><a href="#ch8">API Interface Design</a></li>
+    <li><a href="#ch9">Service Layer Design</a></li>
+    <li><a href="#ch10">Frontend Module & UI/UX Design</a></li>
+    <li><a href="#ch11">ML Inference & Scoring Pipeline</a></li>
+    <li><a href="#ch12">Background Tasks & Scheduling</a></li>
+    <li><a href="#ch13">Security, Compliance & Fairness</a></li>
+    <li><a href="#ch14">Model Monitoring & Retraining</a></li>
+    <li><a href="#ch15">Deployment & CI/CD</a></li>
+    <li><a href="#ch16">Non-Functional Requirements</a></li>
+    <li><a href="#ch17">Project Delivery & RACI</a></li>
+    <li><a href="#ch18">Risk Assessment</a></li>
+  </ol>
+</div>
+
+<!-- CH1 -->
+<span class="anchor" id="ch1"></span>
+<section>
+  <h2>1. Design Overview & BRD Alignment</h2>
+  <h3>1.1 Key Additions from BRD v2.4</h3>
+  <table>
+    <tr><th>BRD v2.4 Addition</th><th>Design Response</th><th>Section</th></tr>
+    <tr><td>Two specific products: Personal Unsecured Loan (Super Fast) & Mortgage Loan (Home Easy)</td><td>Dual-product architecture with independent model pipelines, seed definitions, and feature configurations</td><td>§6</td></tr>
+    <tr><td>71 unified core features + 24 optional Mortgage features</td><td>Complete feature catalog with data source mapping, WOE/IV processing, and temporal leakage audit</td><td>§4, §5</td></tr>
+    <tr><td>Data quality screening rules (missing rate, single-value, IV, P99)</td><td>Automated feature screening pipeline with configurable thresholds</td><td>§5.3</td></tr>
+    <tr><td>Dual-model strategy: LR + LightGBM per product</td><td>Model training service with dual-track pipeline, OOT validation, and model registry</td><td>§6</td></tr>
+    <tr><td>5-layer Smart Sales business architecture</td><td>Business architecture design with Lookalike positioned in Analysis & Governance Layer</td><td>§2</td></tr>
+    <tr><td>UI/UX reference screens (8 screens)</td><td>Frontend design with page-by-page component specification matching BRD reference screens</td><td>§10</td></tr>
+    <tr><td>PSI monitoring & retraining triggers (PSI > 0.25)</td><td>Model monitoring service with automated PSI calculation and alerting</td><td>§14</td></tr>
+    <tr><td>PMS integration, CRM optional downstream</td><td>Integration layer with PMS sync, CRM conditional push, Notification System</td><td>§3, §8</td></tr>
+    <tr><td>Temporal leakage audit (must perform)</td><td>Mandatory pre-training audit step with automated field exclusion</td><td>§5.4</td></tr>
+    <tr><td>Fairness risk assessment (gender, age, region)</td><td>Fairness monitoring with response-rate differential triggers</td><td>§13</td></tr>
+  </table>
+
+  <h3>1.2 Technology Stack</h3>
+  <table>
+    <tr><th>Layer</th><th>Technology</th><th>Rationale</th></tr>
+    <tr><td>Backend</td><td>Python 3.11 + FastAPI</td><td>ML ecosystem (scikit-learn, LightGBM), async performance, Pydantic validation</td></tr>
+    <tr><td>Frontend</td><td>React 18 + TypeScript + Ant Design Pro 5</td><td>Enterprise UI components, built-in ProTable/ProForm, matches BRD reference screens</td></tr>
+    <tr><td>Database</td><td>PostgreSQL 15</td><td>ACID, partitioning for large scoring tables, JSONB for flexible config</td></tr>
+    <tr><td>Cache</td><td>Redis 7</td><td>Score distribution histogram, session, task progress, rate limiting</td></tr>
+    <tr><td>Task Queue</td><td>Celery 5 + Redis</td><td>Async scoring, recurring scheduling, retry with DLQ</td></tr>
+    <tr><td>ML Training</td><td>LightGBM 4 + scikit-learn (LR+WOE)</td><td>BRD-specified dual-model strategy; LightGBM primary, LR explainable baseline</td></tr>
+    <tr><td>Object Storage</td><td>MinIO / S3</td><td>Candidate files, export files, model artifacts</td></tr>
+    <tr><td>Monitoring</td><td>Prometheus + Grafana</td><td>System metrics + PSI/business metrics dashboards</td></tr>
+  </table>
+
+  <h3>1.3 Design Principles</h3>
+  <ol>
+    <li><strong>Score-Threshold Separation</strong>: Threshold is NOT a process creation input; it's a post-scoring dashboard analysis tool (BRD §6.1)</li>
+    <li><strong>Full Population Scoring</strong>: Score 100% of valid candidates; never silently discard low-score customers (BRD §6.4.4)</li>
+    <li><strong>Version Immutability</strong>: Each run creates an independent version with frozen config snapshot</li>
+    <li><strong>Temporal Leakage Prevention</strong>: Mandatory audit step excludes future-information fields before training (BRD §3.4)</li>
+    <li><strong>Dual-Model Independence</strong>: If multi-model scenario is enabled, each model executes independently (BRD §6.4.2)</li>
+    <li><strong>Cold Start Exclusion</strong>: Customers with no transaction history are not covered by Lookalike (BRD §1.3)</li>
+    <li><strong>No Fixed Metric Thresholds</strong>: AUC/KS are diagnostic, not pass/fail gates; business validation via A/B test is ultimate success measure (BRD §5.2)</li>
+  </ol>
+</section>
+
+<!-- CH2 -->
+<span class="anchor" id="ch2"></span>
+<section>
+  <h2>2. Business Architecture (5-Layer Smart Sales) <span class="badge badge-new">NEW</span></h2>
+  <p>BRD v2.4 defines Smart Sales as MB Bank's <strong>Marketing Brain / AI Decision Hub</strong>, adopting a five-layer business architecture. Lookalike is positioned as a core AI component within the <strong>Analysis & Governance Layer</strong>.</p>
+
+  <div class="mermaid">
+  graph TB
+    subgraph L5["Analysis & Governance Layer"]
+      AC["Analysis Center (Lookalike, Dashboards, Reports)"]
+      AOC["Automated Operations Center (Permissions, Logs)"]
+    end
+    subgraph L4["Execution & Outreach Layer"]
+      TC["Touch Channel (App Push, SMS, Zalo, Ads)"]
+      PE["Process Engine (Journey, Frequency Control)"]
+    end
+    subgraph L3["Marketing Strategy Layer"]
+      SC["Marketing Strategy Center (Campaigns, Workflows)"]
+      CC["Content / Recommendation Center"]
+    end
+    subgraph L2["Customer Understanding Layer"]
+      LC["Label Center (Label API, Monitoring)"]
+      PC["Portrait Center (Segment, User 360)"]
+    end
+    subgraph L1["Data Foundation Layer"]
+      DC["Data Center (Customer Data, Events, ID)"]
+    end
+    L1 --> L2 --> L3 --> L4
+    L5 -.->|insights & segments| L3
+    L4 -.->|feedback & outcomes| L5
+    L2 -.->|seed & candidate defs| AC
+    AC -->|expanded audiences| L3
+    style L5 fill:#eeedfe,stroke:#534ab7
+    style AC fill:#534ab7,color:#fff,stroke:none
+  </div>
+
+  <h3>2.1 Lookalike Positioning</h3>
+  <table>
+    <tr><th>Attribute</th><th>Value</th></tr>
+    <tr><td>Layer</td><td>Analysis & Governance Layer (Analysis Center)</td></tr>
+    <tr><td>Core Positioning</td><td>AI tool for expansion analysis and decision support — NOT an independent marketing execution system</td></tr>
+    <tr><td>Input</td><td>Seed population (from Portrait Center Segment or upload), Candidate population (Segment / All Customers / upload)</td></tr>
+    <tr><td>Output</td><td>Similarity scores, feature importance reports, 360 degree profile comparisons, Dashboard analysis results, AI insights</td></tr>
+    <tr><td>Upstream</td><td>Portrait Center (seed/candidate definition), Label Center (label inputs)</td></tr>
+    <tr><td>Downstream</td><td>Strategy Center (segment push), Export file (for digital-channel activation)</td></tr>
+    <tr><td>Closed Loop</td><td>Insight -> Analysis -> Segment -> Execution -> Feedback -> (re)Analysis</td></tr>
+  </table>
+
+  <h3>2.2 Lookalike Core Responsibilities</h3>
+  <table>
+    <tr><th>Responsibility</th><th>Description</th></tr>
+    <tr><td>Seed Quality Analysis</td><td>Evaluate seed quality (size, purity, stability); generate seed quality reports</td></tr>
+    <tr><td>Feature Importance Analysis</td><td>Auto-analyze key features of seed population; output Top feature importance by business dimensions</td></tr>
+    <tr><td>Similar Audience Expansion</td><td>Score candidate populations against pre-trained model; output expanded audiences with score distributions</td></tr>
+    <tr><td>Expansion Results Dashboard</td><td>Score distribution, feature importance, 360 profile comparison, auto-generated AI insights</td></tr>
+    <tr><td>Model Performance Monitoring</td><td>Continuously monitor PSI and business conversion rates; support version management and retraining triggers</td></tr>
+  </table>
+
+  <h3>2.3 Application Architecture (Internal Components)</h3>
+  <table>
+    <tr><th>Component</th><th>Responsibility</th><th>Key Methods</th></tr>
+    <tr><td>Seed Management</td><td>CSV upload, Segment fetch, positive count validation (<1000 triggers warning)</td><td>uploadSeed(), fetchFromSegment(), validateSeedQuality()</td></tr>
+    <tr><td>Candidate Management</td><td>CSV upload, Segment fetch, "all customers" selection, identity mapping validation</td><td>uploadCandidates(), validateIdentityMapping(), estimateProcessingTime()</td></tr>
+    <tr><td>Feature Engineering</td><td>Extract features from wide tables, handle missing values, IV selection, standardization</td><td>extractFeatures(), applyQualityScreening(), computeWOE_IV()</td></tr>
+    <tr><td>Model Training Module</td><td>Train XGBoost/LightGBM, compute KS/AUC, save model and feature importance</td><td>trainDualModel(), evaluateMetrics(), saveToRegistry()</td></tr>
+    <tr><td>Model Inference Module</td><td>Batch score candidates, support threshold filtering</td><td>batchScore(), computeHistogram(), generatePreview()</td></tr>
+    <tr><td>Dashboard Module</td><td>Aggregate scoring results, distribution chart, top features, 360 comparison, auto-insights</td><td>getOverview(), getScoreDistribution(), getFeatureImportance(), getAudienceComparison()</td></tr>
+    <tr><td>Lead Factory Module</td><td>Advanced filtering, bulk create leads, push to CRM (optional)</td><td>applyFilters(), classifyScoreBands(), exportFile(), createSegment()</td></tr>
+  </table>
+</section>
+
+<!-- CH3 -->
+<span class="anchor" id="ch3"></span>
+<section>
+  <h2>3. System Architecture</h2>
+  <div class="mermaid">
+  graph LR
+    subgraph Frontend["Frontend Layer"]
+      PL["Process List"] CP["Create Process"] PM["Product Model Info"]
+      CS["Candidate Selection"] RD["Results Dashboard"] CT["Conversion Tracking"] AL["Audit Log"]
+    end
+    subgraph Gateway["API Gateway"]
+      NG["Nginx (TLS, Rate Limit)"] FA["FastAPI (JWT Auth, RBAC)"]
+    end
+    subgraph Services["Service Layer (Feature-First)"]
+      PS["Process Service"] MS["Model Service"] SS["Scoring Service"]
+      FS["Feature Service"] DS["Dashboard Service"] TS["Tracking Service"]
+      AS["Audit Service"] NS["Notification Service"]
+    end
+    subgraph ML["ML Pipeline"]
+      TR["Training Service (LR + LightGBM)"] IF["Inference Service"] MN["Monitoring Service (PSI)"]
+    end
+    subgraph Tasks["Task Layer"]
+      CE["Celery Workers"] CB["Celery Beat (Recurring)"] DLQ["Dead Letter Queue"]
+    end
+    subgraph Data["Data Layer"]
+      PG[("PostgreSQL 15")] RD2[("Redis 7")] MN2[("MinIO / S3")]
+    end
+    subgraph External["External Systems"]
+      CDP["CDP (Read Only)"] PMS["PMS (Product Sync)"] AML["AI Model System"] CRM["CRM (Optional)"] NOT["Notification System"]
+    end
+    Frontend --> Gateway --> Services
+    Services --> ML Services --> Tasks Services --> Data
+    ML --> Data Tasks --> Data Services --> External
+    style Gateway fill:#eeedfe,stroke:#534ab7
+    style ML fill:#e1f5ee,stroke:#0f6e56
+  </div>
+
+  <h3>3.1 External Integration Matrix</h3>
+  <table>
+    <tr><th>System</th><th>Business Purpose</th><th>Direction</th><th>Integration Method</th></tr>
+    <tr><td>CDP</td><td>Retrieve full customer profiles using uploaded customer ID key</td><td>Read only</td><td>REST API / Batch sync (daily)</td></tr>
+    <tr><td>Project Model (AI Model System)</td><td>Retrieve available Project Models, model version, features, KS/AUC</td><td>Read only</td><td>REST API</td></tr>
+    <tr><td>PMS</td><td>Product catalog, product parameters, product status, publishing notifications</td><td>Read + Notification</td><td>REST API + Webhook</td></tr>
+    <tr><td>CRM Platform</td><td>Receive exported segments/leads only when MB configures manual follow-up</td><td>Optional / Conditional Write</td><td>REST API (conditional)</td></tr>
+    <tr><td>Notification System</td><td>In-system and email notifications when process completes, export ready</td><td>Write</td><td>WebSocket + Email API</td></tr>
+    <tr><td>DWH / ODS / EDW</td><td>Customer basic info, account, transaction, product holding, historical behavior</td><td>Read (Batch daily)</td><td>Batch synchronization</td></tr>
+    <tr><td>App SDK</td><td>App Push, Popup, Banner, Deep Link, page exposure, click, application process behavior</td><td>Read (Real-time Kafka)</td><td>Kafka / API event-triggered</td></tr>
+    <tr><td>Application Process / LOS</td><td>Limit calculation, application creation, approval status, disbursement status</td><td>Read (Real-time or Batch)</td><td>Kafka or batch status sync</td></tr>
+  </table>
+
+  <div class="callout callout-info">
+    <strong>BRD Constraint:</strong> For Super Fast Unsecured Loan digital campaigns, Lookalike results should <strong>primarily return to digital execution channels</strong> (App Push, Zalo, SMS, Banner/Popup, Journey), NOT mandatory CRM push or direct RM assignment. CRM/RM handover is only for higher-limit or manually assisted products.
+  </div>
+</section>
+
+<!-- CH4 -->
+<span class="anchor" id="ch4"></span>
+<section>
+  <h2>4. Data Asset Design (71 Core + 24 Optional Features) <span class="badge badge-new">NEW</span></h2>
+  <p>BRD v2.4 defines a <strong>unified core feature list</strong> (71 active features across 11 groups) shared by both products, plus <strong>24 optional Mortgage Loan candidates</strong> from settlement/counterparty cash-flow data.</p>
+  <div class="stat-row">
+    <div class="stat"><div class="num">71</div><div class="label">Core Features</div></div>
+    <div class="stat"><div class="num">24</div><div class="label">Optional Mortgage</div></div>
+    <div class="stat"><div class="num">11</div><div class="label">Feature Groups</div></div>
+    <div class="stat"><div class="num">29</div><div class="label">Data Sources</div></div>
+  </div>
+
+  <h3>4.1 Feature Group Summary</h3>
+  <table>
+    <tr><th>#</th><th>Feature Group</th><th>Count</th><th>Scope</th><th>Primary Data Source</th></tr>
+    <tr><td>1</td><td>A. Demographics</td><td>8</td><td>Both</td><td>Individual Customer Master, External Economic Data</td></tr>
+    <tr><td>2</td><td>B. Banking Relationship Depth</td><td>18</td><td>Both</td><td>Internal Asset Table, Transaction Records, Product Holdings</td></tr>
+    <tr><td>3</td><td>C. Credit Behaviour Depth</td><td>8</td><td>Both</td><td>CIC + Internal Credit, CIC API</td></tr>
+    <tr><td>4</td><td>D. Income & Financial Health</td><td>8</td><td>Both</td><td>Transaction Records, Internal Assets</td></tr>
+    <tr><td>5</td><td>E. Transaction Behaviour Patterns</td><td>8</td><td>Both</td><td>Transaction Records, MCC, ATM/Counter</td></tr>
+    <tr><td>6</td><td>F. App Behaviour Depth</td><td>8</td><td>Both</td><td>App Events</td></tr>
+    <tr><td>7</td><td>G. Consumer Credit Preferences</td><td>2</td><td>Both</td><td>Transaction Records, Product Holdings</td></tr>
+    <tr><td>8</td><td>B. Banking — MB Available Additions</td><td>5</td><td>Both</td><td>RPT_CST_PD_HLD_DLY</td></tr>
+    <tr><td>9</td><td>E. Transaction — MB Available Additions</td><td>2</td><td>Both</td><td>RPT_CST_PD_HLD_DLY</td></tr>
+    <tr><td>10</td><td>F. App — MB Available Additions</td><td>2</td><td>Both</td><td>RPT_CST_PD_HLD_DLY</td></tr>
+    <tr><td>11</td><td>C. Credit — MB Available Additions</td><td>2</td><td>Both</td><td>BPM_CS_LOAN_OPPORTUNITY_DATA_SNPST</td></tr>
+    <tr><td colspan="2"><strong>Total Core</strong></td><td><strong>71</strong></td><td></td><td></td></tr>
+    <tr><td>12</td><td>D2. Settlement Account Cash Flow (Optional)</td><td>11</td><td>Mortgage only</td><td>Transaction detail tables</td></tr>
+    <tr><td>13</td><td>D3. Counterparty & Cash-flow Concentration (Optional)</td><td>13</td><td>Mortgage only</td><td>Transaction detail (counterparty)</td></tr>
+    <tr><td colspan="2"><strong>Total Optional</strong></td><td><strong>24</strong></td><td></td><td></td></tr>
+  </table>
+
+  <h3>4.2 Detailed Feature Catalog (Core 71)</h3>
+
+  <h4>A. Demographics (8 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Data Source</th><th>Exp. IV</th></tr>
+    <tr><td>1</td><td><code>age</code></td><td>NUM</td><td>Customer's current age (25-40 prime earning years)</td><td>Individual Customer Master</td><td>3 stars</td></tr>
+    <tr><td>2</td><td><code>marital_status</code></td><td>CAT</td><td>Single/Married/Divorced/Widowed</td><td>Individual Customer Master</td><td>3 stars</td></tr>
+    <tr><td>3</td><td><code>education_level</code></td><td>CAT</td><td>Below HS / HS / Bachelor / Master / Doctorate</td><td>Individual Customer Master</td><td>3 stars</td></tr>
+    <tr><td>4</td><td><code>occupation_type</code></td><td>CAT</td><td>Civil servant / Corp employee / Freelancer / Self-employed</td><td>Individual Customer Master</td><td>4 stars</td></tr>
+    <tr><td>5</td><td><code>employment_years</code></td><td>NUM</td><td>Years at current employer</td><td>Customer form + HR data</td><td>3 stars</td></tr>
+    <tr><td>6</td><td><code>residence_region_gdp</code></td><td>NUM</td><td>GDP per capita of province/city</td><td>External economic data</td><td>2 stars</td></tr>
+    <tr><td>7</td><td><code>region_default_rate</code></td><td>NUM</td><td>Avg loan default rate of region (past 12 months)</td><td>Internal risk data</td><td>2 stars</td></tr>
+    <tr><td>8</td><td><code>residence_price_tier</code></td><td>CAT</td><td>High / Medium / Low property price level</td><td>External property price data</td><td>2 stars</td></tr>
+  </table></div>
+
+  <h4>B. Banking Relationship Depth (18 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Exp. IV</th><th>Notes</th></tr>
+    <tr><td>9</td><td><code>banking_relationship_months</code></td><td>NUM</td><td>Months since first account at MB</td><td>3</td><td></td></tr>
+    <tr><td>10</td><td><code>avg_balance_6m</code></td><td>NUM</td><td>Avg daily balance (settlement, 6 months)</td><td>4</td><td></td></tr>
+    <tr><td>11</td><td><code>balance_trend_6m</code></td><td>CAT</td><td>Increasing / Stable / Decreasing</td><td>3</td><td></td></tr>
+    <tr><td>12</td><td><code>avg_monthly_flow_6m</code></td><td>NUM</td><td>Avg monthly inflow (excludes same-CIF transfers)</td><td>4</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>13</td><td><code>investment_product_flag</code></td><td>NUM</td><td>Holds investment product?</td><td>-</td><td></td></tr>
+    <tr><td>14</td><td><code>loan_flag</code></td><td>NUM</td><td>Has outstanding loan balance?</td><td>-</td><td></td></tr>
+    <tr><td>15</td><td><code>casa_flag</code></td><td>NUM</td><td>Holds CASA account?</td><td>-</td><td></td></tr>
+    <tr><td>16</td><td><code>term_deposit_flag</code></td><td>NUM</td><td>Holds term deposit?</td><td>-</td><td></td></tr>
+    <tr><td>17</td><td><code>certificate_of_deposit_cds_flag</code></td><td>NUM</td><td>Holds certificate of deposit?</td><td>-</td><td></td></tr>
+    <tr><td>18</td><td><code>vietqr_customer_flag</code></td><td>NUM</td><td>Has VietQR code (customer)?</td><td>-</td><td></td></tr>
+    <tr><td>19</td><td><code>vietqr_merchant_customer_flag</code></td><td>NUM</td><td>Has VietQR code (merchant)?</td><td>-</td><td></td></tr>
+    <tr><td>20</td><td><code>mbal_insurance_policy_flag</code></td><td>NUM</td><td>Holds MBAL insurance policy?</td><td>-</td><td></td></tr>
+    <tr><td>21</td><td><code>credit_card_flag</code></td><td>NUM</td><td>Holds credit card?</td><td>-</td><td></td></tr>
+    <tr><td>22</td><td><code>total_product_count</code></td><td>NUM</td><td>Total number of products held</td><td>-</td><td></td></tr>
+    <tr><td>23</td><td><code>banking_service_count</code></td><td>NUM</td><td>Number of banking services used</td><td>-</td><td></td></tr>
+    <tr><td>24</td><td><code>total_product_balance</code></td><td>NUM</td><td>Total balance of all products at MB</td><td>4</td><td></td></tr>
+    <tr><td>25</td><td><code>wealth_management_user</code></td><td>BIN</td><td>Purchased/held wealth mgmt in last 3 months</td><td>2</td><td></td></tr>
+    <tr><td>26</td><td><code>credit_card_user</code></td><td>BIN</td><td>Credit card spending in last 3 months</td><td>2</td><td></td></tr>
+  </table></div>
+
+  <h4>C. Credit Behaviour Depth (8 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Exp. IV</th><th>Source</th></tr>
+    <tr><td>27</td><td><code>total_credit_accounts</code></td><td>NUM</td><td>Total credit accounts (cards + loans), 3-5 ideal</td><td>3</td><td>CIC + Internal</td></tr>
+    <tr><td>28</td><td><code>credit_card_utilization</code></td><td>NUM</td><td>Avg used / total limit (6 months), 30-50% ideal</td><td>4</td><td>CIC</td></tr>
+    <tr><td>29</td><td><code>max_overdue_days_12m</code></td><td>NUM</td><td>Longest single overdue (12 months)</td><td>4</td><td>CIC + Internal</td></tr>
+    <tr><td>30</td><td><code>overdue_count_12m</code></td><td>NUM</td><td>Total overdue occurrences (12 months)</td><td>4</td><td>CIC + Internal</td></tr>
+    <tr><td>31</td><td><code>inquiry_concentration</code></td><td>NUM</td><td>Inquiries 3M / inquiries 6M</td><td>3</td><td>CIC API</td></tr>
+    <tr><td>32</td><td><code>loan_inquiry_ratio_6m</code></td><td>NUM</td><td>Loan inquiries / total inquiries (6 months)</td><td>3</td><td>CIC API</td></tr>
+    <tr><td>33</td><td><code>other_bank_debt_to_income</code></td><td>NUM</td><td>Other bank loan balance / annual income</td><td>4</td><td>CIC + Income</td></tr>
+    <tr><td>34</td><td><code>cic_score_trend</code></td><td>CAT</td><td>Increasing / Stable / Decreasing</td><td>3</td><td>CIC API</td></tr>
+  </table></div>
+
+  <h4>D. Income & Financial Health (8 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Exp. IV</th><th>Notes</th></tr>
+    <tr><td>35</td><td><code>income_cv_12m</code></td><td>NUM</td><td>Std/mean of monthly income (12 months)</td><td>4</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>36</td><td><code>salary_credit_months_6m</code></td><td>NUM</td><td>Months with salary credit (6 months)</td><td>4</td><td></td></tr>
+    <tr><td>37</td><td><code>avg_salary_amount_6m</code></td><td>NUM</td><td>Avg monthly salary credit (6 months)</td><td>4</td><td></td></tr>
+    <tr><td>38</td><td><code>salary_trend_6m</code></td><td>CAT</td><td>Increasing / Stable / Decreasing</td><td>3</td><td></td></tr>
+    <tr><td>39</td><td><code>income_source_count</code></td><td>NUM</td><td>Number of income sources</td><td>2</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>40</td><td><code>disposable_income_3m</code></td><td>NUM</td><td>Post-tax income - avg expenditure (3 months)</td><td>4</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>41</td><td><code>savings_rate_12m</code></td><td>NUM</td><td>Net savings / total income (12 months)</td><td>3</td><td>>20% ideal</td></tr>
+    <tr><td>42</td><td><code>liquidity_coverage_months</code></td><td>NUM</td><td>Liquid assets / avg monthly expenditure</td><td>4</td><td>3-6 months ideal</td></tr>
+  </table></div>
+
+  <h4>E. Transaction Behaviour Patterns (8 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Exp. IV</th><th>Notes</th></tr>
+    <tr><td>43</td><td><code>balance_volatility_6m</code></td><td>NUM</td><td>Std/mean of balance (6 months)</td><td>3</td><td></td></tr>
+    <tr><td>44</td><td><code>avg_spending_3m</code></td><td>NUM</td><td>Avg monthly spending (3 months)</td><td>3</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>45</td><td><code>spending_category_count_3m</code></td><td>NUM</td><td>Number of spending categories (3 months)</td><td>2</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>46</td><td><code>premium_spending_ratio_3m</code></td><td>NUM</td><td>Luxury goods/fine dining / total spending</td><td>2</td><td><strong>Exclude same-CIF</strong></td></tr>
+    <tr><td>47</td><td><code>night_spending_ratio_6m</code></td><td>NUM</td><td>22:00-06:00 spending / total (>30% abnormal)</td><td>2</td><td></td></tr>
+    <tr><td>48</td><td><code>online_spending_ratio_6m</code></td><td>NUM</td><td>Online channel spending / total</td><td>2</td><td></td></tr>
+    <tr><td>49</td><td><code>cash_withdrawal_freq_6m</code></td><td>NUM</td><td>Cash withdrawals (6 months)</td><td>2</td><td>ATM/Counter</td></tr>
+    <tr><td>50</td><td><code>cross_border_txn_count_12m</code></td><td>NUM</td><td>Cross-border/overseas transactions (12 months)</td><td>2</td><td></td></tr>
+  </table></div>
+
+  <h4>F. App Behaviour Depth (8 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Exp. IV</th></tr>
+    <tr><td>51</td><td><code>login_freq_30d</code></td><td>NUM</td><td>Total App logins (30 days)</td><td>3</td></tr>
+    <tr><td>52</td><td><code>active_days_90d</code></td><td>NUM</td><td>Unique days with login (90 days)</td><td>3</td></tr>
+    <tr><td>53</td><td><code>avg_session_duration_30d</code></td><td>NUM</td><td>Avg session duration (30 days)</td><td>2</td></tr>
+    <tr><td>54</td><td><code>credit_page_views_30d</code></td><td>NUM</td><td>Loan product page views (30 days) — high-intent</td><td>4</td></tr>
+    <tr><td>55</td><td><code>loan_calculator_usage_30d</code></td><td>NUM</td><td>Loan calculator usage (30 days) — high-intent</td><td>4</td></tr>
+    <tr><td>56</td><td><code>loan_feature_used_ever</code></td><td>BIN</td><td>Ever used any loan feature in App</td><td>3</td></tr>
+    <tr><td>57</td><td><code>app_usage_time_preference</code></td><td>CAT</td><td>Weekday / Weekend</td><td>2</td></tr>
+    <tr><td>58</td><td><code>days_since_last_login</code></td><td>NUM</td><td>Days since most recent login (>30 = declining)</td><td>3</td></tr>
+  </table></div>
+
+  <h4>G. Consumer Credit Preferences (2 features)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Exp. IV</th></tr>
+    <tr><td>59</td><td><code>has_instalment_3m</code></td><td>BIN</td><td>Instalment payment records (3 months)</td><td>2</td></tr>
+    <tr><td>60</td><td><code>has_insurance_12m</code></td><td>BIN</td><td>Purchased life/health insurance (12 months)</td><td>2</td></tr>
+  </table></div>
+
+  <h4>MB Available Additions (11 features, #61-71)</h4>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Field Name</th><th>Type</th><th>Business Meaning</th><th>Source Table</th><th>Exp. IV</th></tr>
+    <tr><td>61</td><td><code>cash_deposit_balance_t0</code></td><td>NUM</td><td>CASA balance at T0</td><td>RPT_CST_PD_HLD_DLY.CASA_AMT</td><td>4</td></tr>
+    <tr><td>62</td><td><code>term_deposit_balance_t0</code></td><td>NUM</td><td>Term deposit balance at T0</td><td>RPT_CST_PD_HLD_DLY.TGTK_AMT</td><td>3</td></tr>
+    <tr><td>63</td><td><code>liquid_asset_balance_t0</code></td><td>NUM</td><td>Total liquid/deposit assets</td><td>RPT_CST_PD_HLD_DLY</td><td>4</td></tr>
+    <tr><td>64</td><td><code>deposit_stability_ratio_t0</code></td><td>NUM</td><td>(TGTK+CDS) / (TGTK+CDS+CASA)</td><td>RPT_CST_PD_HLD_DLY</td><td>3</td></tr>
+    <tr><td>65</td><td><code>core_product_category_count</code></td><td>NUM</td><td>Count of major product categories held</td><td>RPT_CST_PD_HLD_DLY flags</td><td>4</td></tr>
+    <tr><td>66</td><td><code>card_spending_amount_6m</code></td><td>NUM</td><td>Posted card transaction amount (6 months)</td><td>RPT_CST_PD_HLD_DLY.CARD_CR_DB_AMT_TRAN_6M</td><td>3</td></tr>
+    <tr><td>67</td><td><code>card_spending_recent_intensity</code></td><td>NUM</td><td>Annualized 6M / 12M card amount</td><td>RPT_CST_PD_HLD_DLY</td><td>3</td></tr>
+    <tr><td>68</td><td><code>mb_app_active_flag</code></td><td>BIN</td><td>Active on MB App?</td><td>RPT_CST_PD_HLD_DLY.FLAG_APP_ACTIVE</td><td>3</td></tr>
+    <tr><td>69</td><td><code>mini_app_count</code></td><td>NUM</td><td>Number of Mini Apps used</td><td>RPT_CST_PD_HLD_DLY.SL_MINI_APP</td><td>2</td></tr>
+    <tr><td>70</td><td><code>internal_npl_flag</code></td><td>BIN</td><td>Has NPL balance (strong negative signal)</td><td>BPM_CS_LOAN_OPPORTUNITY_DATA_SNPST.NON_PERFORMING_LOAN</td><td>4</td></tr>
+    <tr><td>71</td><td><code>dti_latest</code></td><td>NUM</td><td>Latest Debt-to-Income ratio</td><td>BPM_CS_LOAN_OPPORTUNITY_DATA_SNPST.DTI</td><td>4</td></tr>
+  </table></div>
+
+  <h3>4.3 Optional Mortgage Loan Features (24 candidates)</h3>
+  <p>Sourced from <code>LAL_Secured Business Loan</code> rows 74-103. Used <strong>only</strong> where settlement and counterparty data are available.</p>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">D2. Settlement Account Cash Flow (11)</div>
+      <ul>
+        <li><code>settlement_inflow_amount_6m</code></li>
+        <li><code>settlement_inflow_count_6m</code></li>
+        <li><code>settlement_outflow_amount_6m</code></li>
+        <li><code>settlement_outflow_count_6m</code></li>
+        <li><code>settlement_net_flow_6m</code></li>
+        <li><code>settlement_inflow_amount_12m</code></li>
+        <li><code>settlement_outflow_amount_12m</code></li>
+        <li><code>settlement_inflow_volatility_6m</code></li>
+        <li><code>settlement_balance_avg_6m</code></li>
+        <li><code>settlement_balance_min_6m</code></li>
+        <li><code>settlement_dormant_months_12m</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">D3. Counterparty & Cash-flow Concentration (13)</div>
+      <ul>
+        <li><code>same_name_interbank_inflow_amount_6m</code></li>
+        <li><code>same_name_interbank_inflow_count_6m</code></li>
+        <li><code>same_name_interbank_outflow_amount_6m</code></li>
+        <li><code>same_name_interbank_outflow_count_6m</code></li>
+        <li><code>counterparty_concentration_ratio_6m</code></li>
+        <li><code>top3_counterparty_inflow_ratio_6m</code></li>
+        <li><code>cross_bank_inflow_amount_6m</code></li>
+        <li><code>cross_bank_inflow_count_6m</code></li>
+        <li><code>cross_bank_outflow_amount_6m</code></li>
+        <li><code>counterparty_bank_count_6m</code></li>
+        <li><code>large_value_txn_count_6m</code></li>
+        <li><code>large_value_txn_amount_6m</code></li>
+        <li><code>txn_amount_median_6m</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-warning">
+    <strong>Same-CIF Transaction Exclusion Rule:</strong> Where the feature workbook states "Exclude same CIF transactions", the calculation must exclude intra-bank transfers between accounts under the same CIF/customer within MB. Normal third-party and cross-bank transactions are NOT excluded. Applies to features #12, #35, #39, #40, #44, #45, #46.
+  </div>
+
+  <h3>4.4 ID System & Mapping</h3>
+  <table>
+    <tr><th>ID Type</th><th>Field Name</th><th>Purpose</th></tr>
+    <tr><td>Individual Customer ID</td><td><code>personal_cif</code></td><td>Bank-wide unified customer identifier for linking all individual customer data</td></tr>
+    <tr><td>Corporate Customer ID</td><td><code>enterprise_cif</code></td><td>Bank-wide corporate identifier, applicable to household businesses</td></tr>
+    <tr><td>HostCif</td><td><code>host_cif</code></td><td>Primary key for CDP record retrieval (used in candidate upload)</td></tr>
+    <tr><td>Device ID</td><td><code>device_id</code></td><td>App SDK event linkage (not used for model features)</td></tr>
+  </table>
+</section>
+
+<!-- CH5: FEATURE ENGINEERING PIPELINE -->
+<span class="anchor" id="ch5"></span>
+<section>
+  <h2>5. Feature Engineering Pipeline <span class="badge badge-new">NEW</span></h2>
+  <div class="mermaid">
+  graph LR
+    A[Raw Data Extraction] --> B[Same-CIF Exclusion]
+    B --> C[Missing Value Analysis]
+    C --> D[Data Quality Screening]
+    D --> E[WOE Encoding + IV Calculation]
+    E --> F[Temporal Leakage Audit]
+    F --> G[Feature Selection]
+    G --> H[Standardization / P99 Capping]
+    H --> I[Feature Store]
+    style D fill:#fcebeb,stroke:#a32d2d
+    style F fill:#faeeda,stroke:#854f0b
+    style E fill:#e1f5ee,stroke:#0f6e56
+  </div>
+
+  <h3>5.1 Same-CIF Transaction Exclusion</h3>
+  <pre><code>def exclude_same_cif_transactions(txn_records, customer_cif):
+    """Exclude intra-bank transfers between accounts under the same CIF."""
+    account_ids = get_accounts_by_cif(customer_cif)
+    filtered = txn_records.filter(
+        NOT (sender_account IN account_ids AND receiver_account IN account_ids)
+    )
+    return filtered
+    # Note: Third-party and cross-bank transactions are NOT excluded</code></pre>
+
+  <h3>5.2 Missing Value Analysis</h3>
+  <table>
+    <tr><th>Missing Rate</th><th>Action</th><th>Imputation</th></tr>
+    <tr><td>> 95%</td><td><span class="badge badge-critical">EXCLUDE</span> Directly excluded</td><td>-</td></tr>
+    <tr><td>30% - 95%</td><td><span class="badge badge-warning">RETAIN + FLAG</span></td><td>Median (numeric) / Mode (categorical)</td></tr>
+    <tr><td>< 30%</td><td>Normal retention</td><td>Median (numeric) / Mode (categorical)</td></tr>
+  </table>
+
+  <h3>5.3 Data Quality Screening Rules</h3>
+  <table>
+    <tr><th>Rule</th><th>Threshold</th><th>Action</th><th>Implementation</th></tr>
+    <tr><td>Missing rate exclusion</td><td>> 95%</td><td>Exclude feature</td><td><code>df.isna().mean() > 0.95</code></td></tr>
+    <tr><td>Single value ratio</td><td>> 95%</td><td>Exclude feature</td><td><code>value_counts(normalize=True).iloc[0] > 0.95</code></td></tr>
+    <tr><td>Information Value</td><td>< 0.02</td><td>Exclude feature</td><td>WOE-based IV calculation</td></tr>
+    <tr><td>Numeric skewness</td><td>Significant</td><td>P99 capping</td><td><code>df[col].clip(upper=df[col].quantile(0.99))</code></td></tr>
+  </table>
+
+  <h3>5.4 Temporal Leakage Audit (Mandatory)</h3>
+  <div class="callout callout-danger">
+    <strong>CRITICAL:</strong> Temporal leakage occurs when the model uses future information during training. This audit MUST be performed before every training run.
+  </div>
+  <table>
+    <tr><th>Field to Exclude</th><th>Reason</th></tr>
+    <tr><td>Current loan balance</td><td>Only exists after loan disbursement — post-event information</td></tr>
+    <tr><td>Recent disbursement date</td><td>Only exists after disbursement — post-event</td></tr>
+    <tr><td>Marketing touch outcome</td><td>Only known after customer is reached</td></tr>
+    <tr><td>Credit decision score</td><td>Output of another model — should not be an input</td></tr>
+    <tr><td>Customer ID, ID number</td><td>Business identifiers — no predictive value</td></tr>
+    <tr><td>Eligibility criteria fields</td><td>All candidates have same value (all eligible) — zero discriminatory power within group</td></tr>
+  </table>
+  <div class="callout callout-info">
+    <strong>Key Distinction:</strong> Eligibility criteria (age, nationality) determine <strong>who enters the candidate pool</strong>. Model features determine <strong>who is more quality within the pool</strong>. Must not be mixed.
+  </div>
+
+  <h3>5.5 WOE Encoding & IV Calculation</h3>
+  <pre><code>def compute_woe_iv(df, feature, target, bins=10):
+    """Compute Weight of Evidence and Information Value."""
+    grouped = df.groupby('bin')[target].agg(['count', 'sum'])
+    grouped['non_event'] = grouped['count'] - grouped['sum']
+    grouped['positive_recall'] = grouped['sum'] / grouped['sum'].sum()
+    grouped['negative_recall'] = grouped['non_event'] / grouped['non_event'].sum()
+    grouped['woe'] = np.log(grouped['positive_recall'] / grouped['negative_recall'])
+    grouped['iv'] = (grouped['positive_recall'] - grouped['negative_recall']) * grouped['woe']
+    iv = grouped['iv'].sum()
+    # KS Table fields: positive_recall, negative_recall, cum_positive_recall, cum_negative_recall, ks
+    return woe_map, iv
+
+# IV Rating Guide:
+# High (4-5 stars): Prioritise for extraction, subject to actual IV
+# Medium (3 stars): Retain for EDA unless data quality is weak
+# Low (1-2 stars): Monitor; exclude if IV < 0.02</code></pre>
+</section>
+
+<!-- CH6: MODEL TRAINING DESIGN -->
+<span class="anchor" id="ch6"></span>
+<section>
+  <h2>6. Model Training Design (Dual-Product Dual-Track) <span class="badge badge-new">NEW</span></h2>
+  <p>BRD v2.4 specifies a <strong>dual-product dual-track strategy</strong>: train LR + LightGBM independently for each product. LightGBM is the primary deployment model; LR is retained as an explainable reference for regulatory documentation.</p>
+
+  <div class="mermaid">
+  graph TB
+    subgraph PUL["Personal Unsecured Loan Track"]
+      S1[Seed: Approved + Disbursed 12M] N1[Negative: Eligible but unconverted 12M]
+      D1[Dataset Split 60/20/20] T1[LR + WOE Baseline] T2[LightGBM Primary]
+      O1[Model Registry: PUL-LR-v1, PUL-LGB-v1]
+    end
+    subgraph MLT["Mortgage Loan Track"]
+      S2[Seed: Approved + Disbursed 24M] N2[Negative: Eligible but unconverted 24M]
+      D2[Dataset Split 60/20/20] T3[LR + WOE Baseline] T4[LightGBM Primary]
+      O2[Model Registry: ML-LR-v1, ML-LGB-v1]
+    end
+    S1 --> N1 --> D1 --> T1 D1 --> T2 T1 --> O1 T2 --> O1
+    S2 --> N2 --> D2 --> T3 D2 --> T4 T3 --> O2 T4 --> O2
+    style T2 fill:#e1f5ee,stroke:#0f6e56
+    style T4 fill:#e1f5ee,stroke:#0f6e56
+  </div>
+
+  <h3>6.1 Seed & Negative Sample Definitions</h3>
+  <h4>Personal Unsecured Loan (Super Fast)</h4>
+  <table>
+    <tr><th>Element</th><th>Definition</th></tr>
+    <tr><td><strong>Positive Sample (Seed)</strong></td><td>Obtained Super Fast Unsecured Loan via MB App/digital channels in last 12 months, status "Approved" + disbursed, max overdue <=30 days (never M1), repaying normally >=3 months. Age 22-55 (F) / 22-60 (M).</td></tr>
+    <tr><td><strong>Negative Sample</strong></td><td>Among eligible customers, those who never applied in last 12 months, or applied but rejected for model/risk reasons (NOT hard eligibility failures). "Similar-looking but unconverted."</td></tr>
+    <tr><td><strong>Exclusions</strong></td><td>Employee accounts, system test accounts, closed accounts, deceased customers</td></tr>
+  </table>
+  <h4>Mortgage Loan (Home Easy Loan)</h4>
+  <table>
+    <tr><th>Element</th><th>Definition</th></tr>
+    <tr><td><strong>Positive Sample (Seed)</strong></td><td>Obtained Mortgage Loan in last 24 months, production/business loan for individuals, secured type, status "Approved" + disbursed, max overdue <=10 days, business status "Normal", >=12 months business experience.</td></tr>
+    <tr><td><strong>Negative Sample</strong></td><td>Among eligible customers, those who never applied in last 24 months, or applied but rejected for model/risk reasons. Identified as individual business operators (household business account, payment speaker, VietQR, tax info, high-frequency large-value transactions).</td></tr>
+    <tr><td><strong>Exclusions</strong></td><td>Related-party transaction enterprises, risk warning list enterprises, deregistered enterprises, deceased individuals</td></tr>
+  </table>
+  <div class="callout callout-info">
+    <strong>Core Logic:</strong> Negative samples are "customers who had the opportunity but did not convert" — <strong>NOT</strong> "bad customers." The model identifies likely responders among eligible customers.
+  </div>
+
+  <h3>6.2 Candidate Pool Exclusion Criteria</h3>
+  <table>
+    <tr><th>#</th><th>Exclusion Type</th><th>Reason</th></tr>
+    <tr><td>1</td><td>Employee accounts</td><td>Employee loan policies differ; not comparable</td></tr>
+    <tr><td>2</td><td>System test accounts</td><td>Not real customer behaviour; pollutes model</td></tr>
+    <tr><td>3</td><td>Closed accounts</td><td>No active relationship; cannot be marketed</td></tr>
+    <tr><td>4</td><td>Deceased customers</td><td>No longer eligible</td></tr>
+    <tr><td>5</td><td>Customers not meeting product eligibility</td><td>Age, nationality, document validity, product scope</td></tr>
+  </table>
+
+  <h3>6.3 Dataset Split Protocol</h3>
+  <table>
+    <tr><th>Subset</th><th>Ratio</th><th>Purpose</th><th>Sampling</th></tr>
+    <tr><td>Train</td><td>60%</td><td>Model training + IV selection + feature selection</td><td>Stratified by label</td></tr>
+    <tr><td>Validation</td><td>20%</td><td>Hyper-parameter tuning</td><td>Stratified by label</td></tr>
+    <tr><td>Test (Holdout)</td><td>20%</td><td>Final evaluation (once only)</td><td>Stratified by label</td></tr>
+  </table>
+  <div class="callout callout-warning">
+    <strong>OOT Validation:</strong> Out-of-Time validation uses earlier observation windows for training, with a later time window reserved as OOT set. Simulates future production scoring more realistically. Modelling dataset must be clearly separated from production inference population.
+  </div>
+
+  <h3>6.4 Model Evaluation Metrics</h3>
+  <table>
+    <tr><th>Dimension</th><th>Metric</th><th>Use</th><th>Calculation</th></tr>
+    <tr><td>Ranking</td><td>AUC (Test + OOT)</td><td>Report actual value; NO fixed BRD target before data confirmed</td><td>sklearn.metrics.roc_auc_score</td></tr>
+    <tr><td>Discrimination</td><td>KS (Test + OOT)</td><td>Report actual value; NO fixed BRD target</td><td>Custom KS table</td></tr>
+    <tr><td>Business Lift</td><td>Lift at top 20%</td><td>>= 1.2 (both products)</td><td>(Response rate top 20%) / (Overall)</td></tr>
+    <tr><td>Overfitting</td><td>Diff(Test KS - Train KS)</td><td>Report actual value</td><td>Prevent overfitting</td></tr>
+    <tr><td>Stability</td><td>PSI (monthly post go-live)</td><td><= 0.25; >0.25 triggers alert</td><td>PSI on any feature</td></tr>
+    <tr><td>Confusion Matrix</td><td>Precision, Recall, F1</td><td>Diagnostic reporting</td><td>Standard sklearn</td></tr>
+  </table>
+  <div class="callout callout-info">
+    <strong>BRD Constraint (§5.2):</strong> BRD does NOT pre-commit to fixed AUC/KS targets. Technical metrics are <strong>diagnostic tools</strong>, not pass/fail gates. Final success assessed through controlled business validation (A/B test, top-decile lift, funnel improvement).
+  </div>
+
+  <h3>6.5 Candidate Model Comparison</h3>
+  <table>
+    <tr><th>Model</th><th>Pros</th><th>Cons</th><th>Role</th></tr>
+    <tr><td>Logistic Regression + WOE</td><td>High explainability, simple deployment</td><td>Lower performance ceiling</td><td>Baseline (regulatory reference)</td></tr>
+    <tr><td>LightGBM</td><td>Strong performance, native NaN, fast training</td><td>Medium explainability</td><td>Primary deployment</td></tr>
+    <tr><td>XGBoost</td><td>Strong performance, good ecosystem</td><td>Slower training, many hyperparams</td><td>Backup</td></tr>
+    <tr><td>Random Forest</td><td>Robust, little tuning</td><td>Medium performance</td><td>Reference only</td></tr>
+  </table>
+
+  <h3>6.6 Training Pipeline (Pseudo-code)</h3>
+  <pre><code>class LookalikeModelTrainer:
+    def train_product_model(self, product: str):
+        # 1. Load seed + negative samples (product-specific)
+        seed = self.load_seed_samples(product)
+        negative = self.load_negative_samples(product)
+        
+        # 2. Feature engineering (71 core + optional 24 for mortgage)
+        features = self.feature_engineering(
+            seed + negative, feature_list=FEATURE_CATALOG[product],
+            exclude_same_cif=True, apply_quality_screening=True,
+            temporal_leakage_audit=True
+        )
+        
+        # 3. Dataset split (60/20/20 stratified)
+        train, val, test = self.stratified_split(features, ratios=[0.6, 0.2, 0.2])
+        oot = self.load_oot_samples(product, time_window=self.oot_window)
+        
+        # 4. WOE encoding (for LR)
+        woe_maps = self.compute_woe(train)
+        
+        # 5. Train LR + WOE (baseline)
+        lr_model = LogisticRegression()
+        lr_model.fit(self.apply_woe(train, woe_maps))
+        lr_metrics = self.evaluate(lr_model, val, test, oot)
+        
+        # 6. Train LightGBM (primary)
+        lgb_model = LGBMClassifier(
+            n_estimators=500, learning_rate=0.05, max_depth=6,
+            num_leaves=31, subsample=0.8, colsample_bytree=0.8,
+            class_weight='balanced'
+        )
+        lgb_model.fit(train, eval_set=[(val,)], early_stopping_rounds=50)
+        lgb_metrics = self.evaluate(lgb_model, val, test, oot)
+        
+        # 7. Save to model registry
+        self.save_to_registry(product, lr_model, lgb_model, woe_maps, 
+                              metrics, feature_list, training_config)
+        return {"lr": lr_metrics, "lgb": lgb_metrics}</code></pre>
+</section>
+
+<!-- CH7: DATABASE SCHEMA -->
+<span class="anchor" id="ch7"></span>
+<section>
+  <h2>7. Database Schema (ERD)</h2>
+  <div class="mermaid">
+  erDiagram
+    product_model ||--o{ lookalike_process : "configures"
+    product_model ||--o{ model_registry : "has versions"
+    product_model ||--|| seed_definition : "has"
+    lookalike_process ||--o{ process_version : "creates runs"
+    lookalike_process ||--o{ recurring_schedule : "may have"
+    lookalike_process ||--o{ audit_log : "logs"
+    lookalike_process ||--|| candidate_file : "uploaded to"
+    process_version ||--o{ scoring_result : "produces"
+    process_version ||--o{ analysis_snapshot : "pre-computes"
+    process_version ||--o{ export_history : "generates"
+    process_version ||--o{ segment_definition : "creates"
+    model_registry ||--o{ psi_monitoring : "monitored by"
+    feature_catalog ||--o{ model_feature_map : "mapped to"
+  </div>
+
+  <h3>7.1 Core Tables</h3>
+  <table>
+    <tr><th>Table</th><th>Purpose</th><th>Key Fields</th></tr>
+    <tr><td><code>product_model</code></td><td>Product model metadata</td><td>id, product_type (unsecured/mortgage), model_version, model_metadata (KS/AUC, feature_weights JSONB), seed_definition_ref, observation_window, exclusion_rules, status</td></tr>
+    <tr><td><code>seed_definition</code></td><td>Positive/negative sample rules per product</td><td>id, product_model_id, positive_sample_rules (JSONB), negative_sample_rules (JSONB), exclusion_criteria, min_seed_count (1000)</td></tr>
+    <tr><td><code>feature_catalog</code></td><td>Master feature list (71 + 24)</td><td>id, field_name, feature_group, data_type (NUM/CAT/BIN), data_source, expected_iv, same_cif_exclude, temporal_leakage_risk, is_optional_mortgage</td></tr>
+    <tr><td><code>model_registry</code></td><td>Model versioning (LR + LightGBM)</td><td>id, product_model_id, model_type (lr_woe/lightgbm), model_role (primary/baseline), model_version, artifact_path, metrics (JSONB), feature_list (JSONB), woe_maps (JSONB), training_config, status (training/validated/deployed/retired)</td></tr>
+    <tr><td><code>lookalike_process</code></td><td>Process config & status</td><td>id, process_name, product_model_id, owner_user_id, candidate_source (file/segment/full_base), candidate_config, process_config, status (draft/running/completed/failed/cancelled)</td></tr>
+    <tr><td><code>process_version</code></td><td>Run version (immutable)</td><td>id, process_id, version_label, run_config_snapshot (JSONB), total_candidates, valid_candidates, scored_candidates, status, triggered_by (manual/recurring)</td></tr>
+    <tr><td><code>scoring_result</code></td><td>Customer scores (partitioned by version_id)</td><td>id, version_id, customer_key, similarity_score (DECIMAL 6,4), feature_values (JSONB), scored_at</td></tr>
+    <tr><td><code>analysis_snapshot</code></td><td>Pre-computed dashboard data</td><td>id, version_id, score_distribution (JSONB 100 bins), feature_importance (JSONB), event_importance (JSONB), audience_comparison (JSONB), ai_insights, avg_score, match_rate</td></tr>
+    <tr><td><code>export_history</code></td><td>Export/segment records</td><td>id, version_id, user_id, filter_config, score_band_config, label_definition, export_format, total_rows, file_count, file_paths, destination, segment_name</td></tr>
+    <tr><td><code>recurring_schedule</code></td><td>Recurring execution config</td><td>id, process_id, frequency (daily/weekly/monthly), run_time, repeat_days, is_active, next_run_at, last_run_at</td></tr>
+    <tr><td><code>audit_log</code></td><td>Immutable audit trail</td><td>id, process_id, user_id, action_type, action_detail (JSONB), ip_address, created_at</td></tr>
+    <tr><td><code>psi_monitoring</code></td><td>Model stability monitoring</td><td>id, model_registry_id, feature_name, psi_value, monitoring_period, triggers_retrain, computed_at</td></tr>
+    <tr><td><code>candidate_file</code></td><td>Uploaded candidate files</td><td>id, process_id, file_name, file_path, total_records, valid_records, invalid_records, unmapped_records, status</td></tr>
+  </table>
+
+  <h3>7.2 Key DDL: Audit Log Immutable Trigger</h3>
+  <pre><code>-- Prevent UPDATE and DELETE on audit_log
+CREATE OR REPLACE FUNCTION prevent_audit_modify()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'audit_log is immutable: UPDATE/DELETE not allowed';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER no_update_audit BEFORE UPDATE ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION prevent_audit_modify();
+CREATE TRIGGER no_delete_audit BEFORE DELETE ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION prevent_audit_modify();</code></pre>
+
+  <h3>7.3 Key DDL: Scoring Result Partitioning</h3>
+  <pre><code>CREATE TABLE scoring_result (
+    id          BIGSERIAL,
+    version_id  BIGINT NOT NULL REFERENCES process_version(id),
+    customer_key VARCHAR(50) NOT NULL,
+    similarity_score DECIMAL(6,4) NOT NULL,
+    feature_values JSONB,
+    scored_at   TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (id, version_id)
+) PARTITION BY RANGE (version_id);</code></pre>
+</section>
+
+<!-- CH8: API INTERFACE DESIGN -->
+<span class="anchor" id="ch8"></span>
+<section>
+  <h2>8. API Interface Design</h2>
+  <h3>8.1 API Endpoint Summary</h3>
+  <div class="scroll-x"><table>
+    <tr><th>#</th><th>Method</th><th>Endpoint</th><th>FR</th><th>Description</th></tr>
+    <tr><td>1</td><td>GET</td><td><code>/api/v1/processes</code></td><td>FR-01</td><td>List processes (paginated, filter by status/product/owner)</td></tr>
+    <tr><td>2</td><td>POST</td><td><code>/api/v1/processes</code></td><td>FR-02</td><td>Create a new process (draft)</td></tr>
+    <tr><td>3</td><td>GET</td><td><code>/api/v1/processes/{id}</code></td><td>FR-01</td><td>Get process detail with config and latest version</td></tr>
+    <tr><td>4</td><td>PUT</td><td><code>/api/v1/processes/{id}</code></td><td>FR-02</td><td>Update draft configuration</td></tr>
+    <tr><td>5</td><td>POST</td><td><code>/api/v1/processes/{id}/duplicate</code></td><td>FR-01</td><td>Duplicate process into new draft</td></tr>
+    <tr><td>6</td><td>DELETE</td><td><code>/api/v1/processes/{id}</code></td><td>FR-01</td><td>Delete draft (owner/admin only)</td></tr>
+    <tr><td>7</td><td>GET</td><td><code>/api/v1/product-models</code></td><td>FR-02</td><td>List available product models (read-only)</td></tr>
+    <tr><td>8</td><td>GET</td><td><code>/api/v1/product-models/{id}</code></td><td>FR-02</td><td>Get model info: version, features, KS/AUC, windows, exclusions</td></tr>
+    <tr><td>9</td><td>POST</td><td><code>/api/v1/processes/{id}/candidates/upload</code></td><td>FR-02</td><td>Upload candidate CSV, validate identity keys</td></tr>
+    <tr><td>10</td><td>GET</td><td><code>/api/v1/processes/{id}/candidates/validate</code></td><td>FR-02</td><td>Validation result: valid/invalid/unmapped/insufficient-data counts</td></tr>
+    <tr><td>11</td><td>POST</td><td><code>/api/v1/processes/{id}/candidates/segment</code></td><td>FR-02</td><td>Select candidates from existing Segment</td></tr>
+    <tr><td>12</td><td>POST</td><td><code>/api/v1/processes/{id}/candidates/full-base</code></td><td>FR-02</td><td>Select all eligible customers (with confirmation)</td></tr>
+    <tr><td>13</td><td>GET</td><td><code>/api/v1/processes/{id}/seed-analysis</code></td><td>FR-03</td><td>Seed profile, count, important features, event importance</td></tr>
+    <tr><td>14</td><td>GET</td><td><code>/api/v1/processes/{id}/candidate-analysis</code></td><td>FR-03</td><td>Candidate validation summary, feature coverage</td></tr>
+    <tr><td>15</td><td>POST</td><td><code>/api/v1/processes/{id}/generate</code></td><td>FR-04</td><td>Start scoring (async, creates new version)</td></tr>
+    <tr><td>16</td><td>POST</td><td><code>/api/v1/processes/{id}/cancel</code></td><td>FR-01</td><td>Cancel running generation</td></tr>
+    <tr><td>17</td><td>POST</td><td><code>/api/v1/processes/{id}/retry</code></td><td>FR-01</td><td>Retry failed run (full rerun or resume)</td></tr>
+    <tr><td>18</td><td>GET</td><td><code>/api/v1/processes/{id}/versions</code></td><td>FR-04</td><td>List all run versions for a process</td></tr>
+    <tr><td>19</td><td>GET</td><td><code>/api/v1/versions/{vid}/dashboard</code></td><td>FR-05</td><td>Full dashboard: overview, distribution, features, comparison</td></tr>
+    <tr><td>20</td><td>GET</td><td><code>/api/v1/versions/{vid}/dashboard/overview</code></td><td>FR-05</td><td>Seed size, valid candidates, avg score, match rate</td></tr>
+    <tr><td>21</td><td>GET</td><td><code>/api/v1/versions/{vid}/dashboard/score-distribution</code></td><td>FR-05</td><td>Score distribution histogram (100 bins, 0.01 resolution)</td></tr>
+    <tr><td>22</td><td>GET</td><td><code>/api/v1/versions/{vid}/dashboard/feature-importance</code></td><td>FR-05</td><td>Top feature drivers + event importance</td></tr>
+    <tr><td>23</td><td>GET</td><td><code>/api/v1/versions/{vid}/dashboard/audience-comparison</code></td><td>FR-05</td><td>360 profile comparison (seed vs scored)</td></tr>
+    <tr><td>24</td><td>POST</td><td><code>/api/v1/versions/{vid}/classify</code></td><td>FR-06</td><td>Configure score bands + labels, save classification</td></tr>
+    <tr><td>25</td><td>POST</td><td><code>/api/v1/versions/{vid}/export</code></td><td>FR-06</td><td>Export selected customers (split if >10,000 rows)</td></tr>
+    <tr><td>26</td><td>POST</td><td><code>/api/v1/versions/{vid}/segment</code></td><td>FR-06</td><td>Create Smart Sales segment</td></tr>
+    <tr><td>27</td><td>GET</td><td><code>/api/v1/versions/{vid}/export-history</code></td><td>FR-06</td><td>Export/segment history</td></tr>
+    <tr><td>28</td><td>GET</td><td><code>/api/v1/reporting/conversion</code></td><td>FR-07</td><td>Conversion tracking: contacted, responded, applied, approved, disbursed</td></tr>
+    <tr><td>29</td><td>GET</td><td><code>/api/v1/reporting/iteration</code></td><td>FR-07</td><td>Iteration report: compare audiences, score bands, funnel</td></tr>
+    <tr><td>30</td><td>GET</td><td><code>/api/v1/audit-logs</code></td><td>FR-08</td><td>Query audit logs (admin/risk/compliance)</td></tr>
+    <tr><td>31</td><td>POST</td><td><code>/api/v1/processes/{id}/recurring</code></td><td>FR-02</td><td>Configure recurring schedule</td></tr>
+    <tr><td>32</td><td>GET</td><td><code>/api/v1/model-monitoring/psi</code></td><td>-</td><td>PSI monitoring dashboard (DS/Risk)</td></tr>
+    <tr><td>33</td><td>POST</td><td><code>/api/v1/model-monitoring/retrain</code></td><td>-</td><td>Trigger model retraining (DS only)</td></tr>
+    <tr><td>34</td><td>WS</td><td><code>/ws/processes/{id}/progress</code></td><td>FR-04</td><td>WebSocket: real-time progress (circular %)</td></tr>
+  </table></div>
+
+  <h3>8.2 Key API Examples</h3>
+  <h4>GET /api/v1/versions/{vid}/dashboard — Response</h4>
+  <pre><code>{
+  "overview": {
+    "seed_size": 5420,
+    "valid_candidates_scored": 1850000,
+    "avg_similarity_score": 0.3842,
+    "match_rate": 0.1543
+  },
+  "score_distribution": {
+    "bins": [0.00, 0.01, 0.02, ..., 0.99, 1.00],
+    "counts": [120, 350, 890, ...],
+    "resolution": 0.01
+  },
+  "feature_importance": {
+    "features": [
+      {"name": "credit_page_views_30d", "importance": 0.1523, "group": "F. App Behaviour"},
+      {"name": "avg_balance_6m", "importance": 0.1122, "group": "B. Banking Relationship"},
+      {"name": "loan_calculator_usage_30d", "importance": 0.0987, "group": "F. App Behaviour"},
+      {"name": "dti_latest", "importance": 0.0856, "group": "C. Credit Behaviour"},
+      {"name": "avg_salary_amount_6m", "importance": 0.0734, "group": "D. Income & Financial"}
+    ]
+  },
+  "audience_comparison": {
+    "dimensions": [
+      {"attribute": "age", "seed_avg": 34.2, "scored_avg": 35.1, "diff": 0.9},
+      {"attribute": "avg_balance_6m", "seed_avg": 45000000, "scored_avg": 42000000, "diff": -6.7}
+    ]
+  },
+  "ai_insights": "Top distinguishing features are digital engagement signals...",
+  "run_version": {"version_id": 201, "triggered_by": "manual", "started_at": "...", "completed_at": "..."}
+}</code></pre>
+</section>
+
+<!-- CH9: SERVICE LAYER -->
+<span class="anchor" id="ch9"></span>
+<section>
+  <h2>9. Service Layer Design</h2>
+  <h3>9.1 Project Structure (Feature-First)</h3>
+  <pre><code>lookalike/
+├── app/
+│   ├── main.py                      # FastAPI app entry
+│   ├── core/
+│   │   ├── config.py                # Settings (env-based)
+│   │   ├── security.py              # JWT, RBAC
+│   │   └── database.py              # SQLAlchemy engine/session
+│   ├── features/
+│   │   ├── process/                 # FR-01, FR-02: Process lifecycle
+│   │   │   ├── router.py
+│   │   │   ├── service.py
+│   │   │   └── models.py
+│   │   ├── seed_candidate/         # FR-03: Seed & candidate analysis
+│   │   ├── generation/              # FR-04: Scoring pipeline
+│   │   ├── dashboard/              # FR-05: Results dashboard
+│   │   │   ├── histogram.py         # Score distribution (Redis)
+│   │   │   └── ai_insights.py      # AI insight generation
+│   │   ├── classification/         # FR-06: Filter, classify, export
+│   │   ├── reporting/              # FR-07: Conversion tracking
+│   │   └── audit/                   # FR-08: Audit log
+│   ├── ml/
+│   │   ├── training/
+│   │   │   ├── trainer.py           # Dual-model training
+│   │   │   ├── woe.py              # WOE/IV computation
+│   │   │   ├── evaluation.py       # AUC, KS, Lift, PSI
+│   │   │   └── temporal_audit.py   # Leakage audit
+│   │   ├── inference/
+│   │   │   ├── scorer.py           # Batch scoring
+│   │   │   └── feature_extractor.py
+│   │   ├── monitoring/
+│   │   │   ├── psi_monitor.py      # PSI calculation
+│   │   │   └── retrain_trigger.py  # Auto retrain on PSI > 0.25
+│   │   └── registry/
+│   │       └── model_registry.py    # Model versioning
+│   ├── integrations/
+│   │   ├── cdp_client.py            # CDP read-only
+│   │   ├── pms_client.py            # PMS sync
+│   │   ├── crm_client.py            # CRM conditional push
+│   │   └── notification_client.py
+│   └── workers/
+│       ├── celery_app.py
+│       └── tasks/ (scoring, analysis, export, recurring, psi_monitor, retrain)</code></pre>
+
+  <h3>9.2 Key Services</h3>
+  <h4>FeatureEngineeringService — Quality Screening</h4>
+  <pre><code>class FeatureEngineeringService:
+    def apply_quality_screening(self, df):
+        """Apply BRD-defined data quality rules."""
+        for col in df.columns:
+            missing_rate = df[col].isna().mean()
+            single_value_ratio = df[col].value_counts(
+                normalize=True).iloc[0] if not df[col].isna().all() else 1
+            
+            if missing_rate > 0.95:    # Rule 1: >95% missing -> exclude
+                df = df.drop(columns=[col])
+                continue
+            if single_value_ratio > 0.95:  # Rule 2: >95% single value -> exclude
+                df = df.drop(columns=[col])
+                continue
+            # Rule 3: Impute missing values
+            if missing_rate > 0:
+                if df[col].dtype in ['float64', 'int64']:
+                    df[col] = df[col].fillna(df[col].median())
+                else:
+                    df[col] = df[col].fillna(df[col].mode()[0])
+        return df</code></pre>
+
+  <h4>ScoringService — Batch Scoring</h4>
+  <pre><code>class ScoringService:
+    BATCH_SIZE = 10000
+    async def generate(self, process_id, version_id):
+        config = await self.get_process_config(process_id)
+        candidates = await self.get_candidates(process_id)
+        model = self.load_model(config.product_model_id)
+        
+        for i in range(0, len(candidates), self.BATCH_SIZE):
+            batch = candidates[i:i + self.BATCH_SIZE]
+            features = self.feature_service.extract_features(batch, model.feature_list)
+            if model.model_type == 'lr_woe':
+                features = self.apply_woe(features, model.woe_maps)
+            scores = model.predict_proba(features)[:, 1]
+            self.save_scores_batch(version_id, batch, scores)
+            await self.broadcast_progress(version_id, percentage=...)
+        
+        # Pre-compute histogram (100 bins, 0.01 resolution) -> Redis
+        all_scores = self.get_all_scores(version_id)
+        histogram = self.compute_histogram(all_scores, bins=100, range_=(0, 1))
+        await self.redis.set(f"histogram:{version_id}", json.dumps(histogram))
+        # Pre-compute analysis snapshot
+        await self.compute_analysis(version_id)</code></pre>
+</section>
+
+<!-- CH10: FRONTEND & UI/UX -->
+<span class="anchor" id="ch10"></span>
+<section>
+  <h2>10. Frontend Module & UI/UX Design <span class="badge badge-updated">UPDATED</span></h2>
+  <p>BRD v2.4 provides 8 reference UI/UX screens. The frontend maps each to React components with Ant Design Pro.</p>
+
+  <h3>10.1 Page-Component Mapping</h3>
+  <table>
+    <tr><th>BRD Screen</th><th>Route</th><th>Key Components</th><th>BRD Ref</th></tr>
+    <tr><td>6-2. Process List</td><td><code>/lookalike/processes</code></td><td>ProTable, StatusTag, ActionDropdown</td><td>§6.3.1</td></tr>
+    <tr><td>6-3. Create Process</td><td><code>/lookalike/processes/create</code></td><td>ProForm, ModelSelect, CandidateSourceSelector</td><td>§6.3.2</td></tr>
+    <tr><td>6-4. Product Model Info</td><td><code>/lookalike/processes/{id}/model</code></td><td>Descriptions, FeatureList, Timeline</td><td>§6.3.3</td></tr>
+    <tr><td>6-5. Uploaded Candidate</td><td><code>/lookalike/processes/{id}/candidates</code></td><td>Upload, ValidationResult, RecordSummary</td><td>§6.3.4</td></tr>
+    <tr><td>6-6. Entire Customer Base</td><td><code>/lookalike/processes/{id}/candidates</code></td><td>RadioGroup, ConfirmModal, TimeEstimate</td><td>§6.3.4</td></tr>
+    <tr><td>6-7. Generation Result</td><td><code>/lookalike/versions/{vid}/dashboard</code></td><td>ScoreDistribution, FeatureImportance, AudienceComparison</td><td>§6.3.5</td></tr>
+    <tr><td>6-8. Large File Download</td><td><code>/lookalike/versions/{vid}/export</code></td><td>Alert, SplitFileDownload, Progress</td><td>§6.3.5</td></tr>
+    <tr><td>—. Conversion Tracking</td><td><code>/lookalike/reporting</code></td><td>FunnelChart, ComparisonTable, IterationReport</td><td>§6.4.7</td></tr>
+  </table>
+
+  <h3>10.2 Real-Time Threshold Slider (No API Call)</h3>
+  <pre><code>// Histogram pre-computed during scoring, cached in Redis
+// Frontend fetches once, then local summation on slider drag
+const ScoreDistributionChart = ({ versionId }) => {
+  const { data: histogram } = useQuery(['histogram', versionId],
+    () => fetchHistogram(versionId));
+  const [threshold, setThreshold] = useState(0.5);
+  
+  // Local calculation: sum counts where bin >= threshold
+  const selectedCount = useMemo(() => {
+    return histogram.counts.reduce((sum, count, i) =>
+      histogram.bins[i] >= threshold ? sum + count : sum, 0);
+  }, [histogram, threshold]);
+  
+  return (
+    &lt;Card&gt;
+      &lt;HistogramChart data={histogram} threshold={threshold} /&gt;
+      &lt;Slider min={0} max={1} step={0.01} value={threshold}
+        onChange={setThreshold}  // No API call!
+        tooltip={{ formatter: v => `>= ${v.toFixed(2)}` }} /&gt;
+      &lt;Statistic title="Selected Customers" value={selectedCount} /&gt;
+    &lt;/Card&gt;
+  );
+};</code></pre>
+
+  <h3>10.3 Process Status State Machine</h3>
+  <div class="mermaid">
+  stateDiagram-v2
+    [*] --> Draft: Create / Duplicate
+    Draft --> Running: Generate (Start)
+    Draft --> Draft: Edit Config
+    Draft --> [*]: Delete (Owner/Admin)
+    Running --> Completed: Success
+    Running --> Failed: Error
+    Running --> Cancelled: User Cancel
+    Failed --> Running: Retry (New Process ID)
+    Completed --> Completed: View / Export / Segment
+  </div>
+  <div class="callout callout-warning">
+    <strong>Concurrency Limit:</strong> Maximum 3 concurrent Lookalike tasks per user. A 4th submission is rejected with a clear message — NOT silently queued.
+  </div>
+
+  <h3>10.4 UI Business Rules (from BRD §6.1)</h3>
+  <ul>
+    <li><strong>No threshold at creation</strong>: Score threshold applied after scoring in dashboard</li>
+    <li><strong>Hot/Warm/Cool not hard-coded</strong>: Marketing users configure score ranges per product/campaign</li>
+    <li><strong>Standard hand-off is export or segment</strong>: Direct CRM push and RM assignment NOT default</li>
+    <li><strong>Log Monitoring is source of truth</strong>: WebSocket is UI enhancement, not separate requirement</li>
+    <li><strong>Full-base confirmation</strong>: System asks confirmation and shows processing-time estimate</li>
+    <li><strong>Large file split</strong>: Files >10,000 rows must be split; user warned</li>
+  </ul>
+</section>
+
+<!-- CH11: ML INFERENCE -->
+<span class="anchor" id="ch11"></span>
+<section>
+  <h2>11. ML Inference & Scoring Pipeline</h2>
+  <div class="mermaid">
+  graph LR
+    A[Load Config] --> B[Get Candidates]
+    B --> C[Batch Feature Extraction 10k/batch]
+    C --> D[WOE Encoding if LR]
+    D --> E[Model Inference LightGBM]
+    E --> F[Score ALL Valid Candidates Never discard]
+    F --> G[Pre-compute Histogram 100 bins]
+    G --> H[Cache to Redis]
+    H --> I[Pre-compute Analysis Snapshot]
+    I --> J[Audit + Notification]
+    style F fill:#e1f5ee,stroke:#0f6e56
+    style G fill:#eeedfe,stroke:#534ab7
+  </div>
+  <h3>11.1 Score Distribution Pre-Computation</h3>
+  <pre><code>// Histogram structure (cached in Redis)
+{
+  "bins": [0.00, 0.01, 0.02, ..., 0.99, 1.00],  // 100 bins
+  "counts": [120, 350, 890, 1450, ..., 45],
+  "resolution": 0.01,
+  "total": 1850000,
+  "avg_score": 0.3842,
+  "percentiles": {"p10": 0.12, "p25": 0.22, "p50": 0.35, "p75": 0.52, "p90": 0.71}
+}</code></pre>
+</section>
+
+<!-- CH12: BACKGROUND TASKS -->
+<span class="anchor" id="ch12"></span>
+<section>
+  <h2>12. Background Tasks & Scheduling</h2>
+  <h3>12.1 Celery Task Catalog</h3>
+  <table>
+    <tr><th>Task</th><th>Trigger</th><th>Description</th><th>Retry</th><th>Timeout</th></tr>
+    <tr><td><code>scoring_task</code></td><td>Manual / Recurring</td><td>Batch score all candidates</td><td>3x, 60s</td><td>4h</td></tr>
+    <tr><td><code>analysis_task</code></td><td>After scoring</td><td>Feature importance, 360 comparison, AI insights</td><td>2x, 30s</td><td>30min</td></tr>
+    <tr><td><code>export_task</code></td><td>Manual</td><td>Generate export files (split if >10k)</td><td>2x, 30s</td><td>15min</td></tr>
+    <tr><td><code>segment_task</code></td><td>Manual</td><td>Create Smart Sales segment</td><td>2x, 30s</td><td>5min</td></tr>
+    <tr><td><code>recurring_task</code></td><td>Celery Beat</td><td>Trigger scheduled runs (daily/weekly/monthly)</td><td>1x, 5min</td><td>4h</td></tr>
+    <tr><td><code>psi_monitor_task</code></td><td>Beat (monthly)</td><td>Calculate PSI for all deployed models</td><td>2x, 60s</td><td>30min</td></tr>
+    <tr><td><code>retrain_task</code></td><td>Manual / PSI trigger</td><td>Retrain model with latest data</td><td>1x, 5min</td><td>8h</td></tr>
+    <tr><td><code>feature_refresh_task</code></td><td>Beat (daily)</td><td>Refresh feature data from CDP/DWH</td><td>3x, 60s</td><td>2h</td></tr>
+    <tr><td><code>conversion_sync_task</code></td><td>Beat (daily)</td><td>Sync conversion outcomes from channels</td><td>3x, 60s</td><td>30min</td></tr>
+    <tr><td><code>pms_sync_task</code></td><td>Webhook / Beat (hourly)</td><td>Sync product info from PMS</td><td>3x, 30s</td><td>5min</td></tr>
+  </table>
+  <h3>12.2 Recurring Schedule Logic</h3>
+  <p>Each scheduled run creates a <strong>NEW version</strong>. Existing results are <strong>NEVER overwritten</strong>. The schedule is a process configuration, not a separate user-visible task status.</p>
+</section>
+
+<!-- CH13: SECURITY & COMPLIANCE -->
+<span class="anchor" id="ch13"></span>
+<section>
+  <h2>13. Security, Compliance & Fairness</h2>
+  <h3>13.1 Security & Data Protection</h3>
+  <ul>
+    <li><strong>RBAC</strong>: Each user only sees what falls within their job scope</li>
+    <li><strong>Audit Trail</strong>: All significant actions logged (immutable via DB trigger)</li>
+    <li><strong>PDPA Compliance</strong>: Customer data protected per Vietnam PDPL</li>
+    <li><strong>Sensitive Data Masking</strong>: National ID number and full account number not displayed as plain text</li>
+    <li><strong>JWT</strong>: 15min access token, 7-day refresh token</li>
+    <li><strong>Rate Limiting</strong>: Max 3 concurrent Lookalike tasks per user</li>
+  </ul>
+  <h3>13.2 Fairness Risk Assessment <span class="badge badge-new">NEW</span></h3>
+  <table>
+    <tr><th>Sensitive Attribute</th><th>Risk</th><th>Mitigation</th></tr>
+    <tr><td>Gender</td><td>Gender discrimination</td><td>Report response rates by gender; trigger review if difference >20%</td></tr>
+    <tr><td>Age</td><td>Age discrimination (especially 60+)</td><td>Same as above; monitor approval rates by age band</td></tr>
+    <tr><td>Region</td><td>Geographic bias</td><td>Monitor distribution of selected audiences across regions</td></tr>
+  </table>
+  <h3>13.3 Third-Party Data Compliance</h3>
+  <div class="callout callout-warning">
+    <ul>
+      <li><strong>CIC data</strong>: Cannot be the SOLE basis for outputting customer lists (only for feature enhancement)</li>
+      <li><strong>External data</strong>: Must go through procurement compliance and confirm data licensing terms</li>
+      <li><strong>Third-party data</strong>: Shall NOT be the sole decision input; must be fused with internal data</li>
+    </ul>
+  </div>
+  <h3>13.4 Audit Log Actions</h3>
+  <table>
+    <tr><th>Action Type</th><th>Trigger</th><th>Logged Fields</th></tr>
+    <tr><td>CREATE</td><td>Process created</td><td>process_id, user_id, config</td></tr>
+    <tr><td>DUPLICATE</td><td>Process duplicated</td><td>source_process_id, new_process_id</td></tr>
+    <tr><td>CONFIG_CHANGE</td><td>Draft config updated</td><td>process_id, old/new_config</td></tr>
+    <tr><td>GENERATE_START</td><td>Scoring started</td><td>process_id, version_id, candidate_count</td></tr>
+    <tr><td>GENERATE_COMPLETE</td><td>Scoring finished</td><td>version_id, scored_count, duration</td></tr>
+    <tr><td>CANCEL</td><td>Run cancelled</td><td>version_id, user_id, reason</td></tr>
+    <tr><td>RETRY</td><td>Failed run retried</td><td>old/new version_id</td></tr>
+    <tr><td>THRESHOLD_CONFIG</td><td>Score band configured</td><td>version_id, bands, labels</td></tr>
+    <tr><td>SEGMENT_CREATE</td><td>Smart Sales segment created</td><td>version_id, segment_name, count</td></tr>
+    <tr><td>EXPORT</td><td>File exported</td><td>version_id, format, row_count, file_count</td></tr>
+  </table>
+</section>
+
+<!-- CH14: MODEL MONITORING -->
+<span class="anchor" id="ch14"></span>
+<section>
+  <h2>14. Model Monitoring & Retraining <span class="badge badge-new">NEW</span></h2>
+  <div class="mermaid">
+  graph LR
+    A[Monthly: Extract Current Distribution] --> B[Compare with Training Distribution]
+    B --> C{PSI per Feature}
+    C -->|PSI <= 0.10| D[Stable - No action]
+    C -->|0.10 < PSI <= 0.25| E[Monitor - Log + Alert]
+    C -->|PSI > 0.25| F[Unstable - Trigger Retrain]
+    F --> G[DS Review]
+    G --> H[Retrain with Latest Data]
+    H --> I[OOT Validation]
+    I --> J{Pass?}
+    J -->|Yes| K[Deploy New Model]
+    J -->|No| L[Investigate Feature Drift]
+    K --> M[Canary Release 50%/30%]
+    M --> N[Monitor Business Conversion]
+    style F fill:#fcebeb,stroke:#a32d2d
+    style D fill:#e1f5ee,stroke:#0f6e56
+  </div>
+
+  <h3>14.1 PSI Monitoring Implementation</h3>
+  <pre><code>class PSIMonitor:
+    def compute_psi(self, train_dist, current_dist, bins=10):
+        """Calculate Population Stability Index."""
+        train_pct = train_dist / train_dist.sum()
+        current_pct = current_dist / current_dist.sum()
+        train_pct = np.where(train_pct == 0, 0.0001, train_pct)
+        current_pct = np.where(current_pct == 0, 0.0001, current_pct)
+        psi = np.sum((current_pct - train_pct) * np.log(current_pct / train_pct))
+        return psi
+
+    def monitor_all_features(self, model_id):
+        """Monthly PSI check for all features of a deployed model."""
+        model = self.registry.get_model(model_id)
+        results = []
+        for feature in model.feature_list:
+            psi = self.compute_psi(
+                model.train_feature_distributions[feature],
+                self.extract_current_distributions(feature, period=current_month())
+            )
+            results.append({
+                'feature': feature, 'psi': psi,
+                'status': 'stable' if psi <= 0.10 else 'monitor' if psi <= 0.25 else 'unstable',
+                'triggers_retrain': psi > 0.25
+            })
+        unstable = [r for r in results if r['triggers_retrain']]
+        if unstable:
+            self.alert_ds_team(model_id, unstable)
+            retrain_task.delay(model_id)  # Auto-trigger retrain</code></pre>
+
+  <h3>14.2 Retraining Trigger Rules</h3>
+  <table>
+    <tr><th>Trigger</th><th>Threshold</th><th>Action</th></tr>
+    <tr><td>PSI > 0.25 on any feature</td><td>Monthly check</td><td>Alert DS team + auto-trigger retrain</td></tr>
+    <tr><td>Business conversion rate drop</td><td>Monthly funnel</td><td>DS review -> decide retrain</td></tr>
+    <tr><td>Scheduled retraining</td><td>Quarterly</td><td>DS team evaluates performance trend</td></tr>
+    <tr><td>Data source change</td><td>Event-driven</td><td>DS review impact -> retrain if needed</td></tr>
+  </table>
+
+  <h3>14.3 Canary Release Strategy (BRD Risk R6)</h3>
+  <table>
+    <tr><th>Phase</th><th>Traffic</th><th>Duration</th><th>Success Criteria</th></tr>
+    <tr><td>Phase 1</td><td>30% new, 70% old</td><td>2 weeks</td><td>Response rate >= 1.2x baseline</td></tr>
+    <tr><td>Phase 2</td><td>50% new, 50% old</td><td>2 weeks</td><td>Funnel metrics stable/improving</td></tr>
+    <tr><td>Full rollout</td><td>100% new</td><td>-</td><td>PSI <= 0.25 sustained</td></tr>
+    <tr><td>Fallback</td><td>100% old</td><td>Immediate</td><td>If any phase fails</td></tr>
+  </table>
+</section>
+
+<!-- CH15: DEPLOYMENT -->
+<span class="anchor" id="ch15"></span>
+<section>
+  <h2>15. Deployment & CI/CD</h2>
+  <h3>15.1 Docker Compose Topology</h3>
+  <pre><code>services:
+  frontend:   # React 18 + Ant Design Pro (port 3000)
+  nginx:      # TLS, Rate Limit (ports 80, 443)
+  backend:    # FastAPI (port 8000)
+  celery-worker: # 4 concurrent workers
+  celery-beat:   # Recurring scheduler
+  db:         # PostgreSQL 15
+  redis:      # Redis 7
+  minio:      # Object Storage (ports 9000, 9001)</code></pre>
+
+  <h3>15.2 CI/CD Pipeline</h3>
+  <div class="mermaid">
+  graph LR
+    A[Git Push] --> B[Lint + Type Check]
+    B --> C[Unit Tests]
+    C --> D[Build Docker Images]
+    D --> E[Deploy to Staging]
+    E --> F[Integration Tests]
+    F --> G{Pass?}
+    G -->|Yes| H[Blue-Green Deploy]
+    G -->|No| I[Notify Developer]
+    H --> J[Smoke Tests]
+    J --> K{Pass?}
+    K -->|Yes| L[Switch Traffic]
+    K -->|No| M[Rollback]
+    style H fill:#e1f5ee,stroke:#0f6e56
+    style M fill:#fcebeb,stroke:#a32d2d
+  </div>
+</section>
+
+<!-- CH16: NON-FUNCTIONAL -->
+<span class="anchor" id="ch16"></span>
+<section>
+  <h2>16. Non-Functional Requirements</h2>
+  <h3>16.1 Performance</h3>
+  <table>
+    <tr><th>Metric</th><th>Target</th><th>Measurement</th></tr>
+    <tr><td>API Response (list)</td><td>< 200ms (P95)</td><td>Prometheus histogram</td></tr>
+    <tr><td>API Response (dashboard)</td><td>< 500ms (P95)</td><td>Pre-computed snapshot</td></tr>
+    <tr><td>Threshold slider response</td><td>< 1ms</td><td>Local computation (no API)</td></tr>
+    <tr><td>Scoring throughput</td><td>~500k candidates/hour</td><td>10k batch, parallel</td></tr>
+    <tr><td>Full-base scoring (2M customers)</td><td>< 4 hours</td><td>Batch overnight</td></tr>
+    <tr><td>Concurrent tasks per user</td><td>Max 3</td><td>Redis counter</td></tr>
+    <tr><td>File upload (CSV)</td><td>Up to 50MB</td><td>Multipart upload</td></tr>
+    <tr><td>Export file split</td><td>10,000 rows per file</td><td>Background task</td></tr>
+  </table>
+  <h3>16.2 Acceptance Criteria (from BRD §9.4)</h3>
+  <table>
+    <tr><th>ID</th><th>Item</th><th>Pass Criteria</th></tr>
+    <tr><td>AC-01</td><td>Data ingestion completeness</td><td>All required source fields ingested; missing rates <= thresholds</td></tr>
+    <tr><td>AC-02</td><td>Model validation completed</td><td>Train/val/test separated from inference population; OOT validation done; AUC/KS/Lift/PSI reported as diagnostics</td></tr>
+    <tr><td>AC-03</td><td>Model diagnostics reported</td><td>AUC, KS, Lift, PSI, score distribution, OOT results reported transparently; NO fixed AUC/KS threshold pre-committed</td></tr>
+    <tr><td>AC-04</td><td>Interface integration</td><td>Required APIs succeed; error rate < 1%</td></tr>
+    <tr><td>AC-05</td><td>Security test passed</td><td>No high-risk vulnerabilities; medium-risk fixed</td></tr>
+    <tr><td>AC-06</td><td>Business validation accepted</td><td>A/B test or equivalent controlled business validation plan agreed</td></tr>
+    <tr><td>AC-07</td><td>Auto-recovery</td><td>Running processes auto-recover and retry up to 3 times on system error</td></tr>
+    <tr><td>AC-08</td><td>Maintenance notification</td><td>Users clearly notified during system maintenance or incidents</td></tr>
+  </table>
+</section>
+
+<!-- CH17: PROJECT DELIVERY -->
+<span class="anchor" id="ch17"></span>
+<section>
+  <h2>17. Project Delivery & RACI <span class="badge badge-new">NEW</span></h2>
+  <h3>17.1 Milestones & Timeline (17 Weeks)</h3>
+  <table>
+    <tr><th>Phase</th><th>Weeks</th><th>Key Deliverable</th><th>Owner</th></tr>
+    <tr><td>Requirements + BRD sign-off</td><td>W1-W4</td><td>Signed BRD</td><td>PM + all stakeholders</td></tr>
+    <tr><td>Data ingestion + EDA</td><td>W5-W6</td><td>EDA report + data dictionary</td><td>Data + DS</td></tr>
+    <tr><td>Feature engineering + baseline modelling</td><td>W7-W8</td><td>LR + LGB baselines for both products</td><td>DS</td></tr>
+    <tr><td>Model tuning + evaluation</td><td>W9-W10</td><td>Optimal model + evaluation report</td><td>DS</td></tr>
+    <tr><td>System integration + UAT</td><td>W11-W13</td><td>API integration + UAT report</td><td>IT + DS</td></tr>
+    <tr><td>Go-live scoring + A/B test</td><td>W14-W16</td><td>First-month lists + test plan</td><td>Marketing + Ops</td></tr>
+    <tr><td>Post-go-live monitoring</td><td>W17+</td><td>Monthly monitoring reports</td><td>DS + Ops</td></tr>
+  </table>
+
+  <h3>17.2 RACI Matrix</h3>
+  <table>
+    <tr><th>Task</th><th>Sales</th><th>Data</th><th>DS</th><th>IT</th><th>Security</th><th>Ops</th></tr>
+    <tr><td>Define business goals</td><td>A</td><td>C</td><td>C</td><td>I</td><td>I</td><td>I</td></tr>
+    <tr><td>Define seed criteria</td><td>A</td><td>R</td><td>C</td><td>I</td><td>I</td><td>I</td></tr>
+    <tr><td>Data ingestion</td><td>C</td><td>R/A</td><td>C</td><td>C</td><td>C</td><td>I</td></tr>
+    <tr><td>Feature engineering / modelling</td><td>C</td><td>C</td><td>R/A</td><td>I</td><td>I</td><td>I</td></tr>
+    <tr><td>Compliance review</td><td>I</td><td>C</td><td>C</td><td>I</td><td>R/A</td><td>I</td></tr>
+    <tr><td>System integration</td><td>C</td><td>C</td><td>C</td><td>R/A</td><td>C</td><td>C</td></tr>
+    <tr><td>Go-live deployment</td><td>C</td><td>C</td><td>C</td><td>C</td><td>C</td><td>R/A</td></tr>
+    <tr><td>Performance monitoring</td><td>A</td><td>C</td><td>R</td><td>C</td><td>I</td><td>C</td></tr>
+  </table>
+  <p><small>R = Responsible, A = Accountable, C = Consulted, I = Informed</small></p>
+</section>
+
+<!-- CH18: RISK ASSESSMENT -->
+<span class="anchor" id="ch18"></span>
+<section>
+  <h2>18. Risk Assessment</h2>
+  <h3>18.1 Risk Register (from BRD v2.4)</h3>
+  <table>
+    <tr><th>#</th><th>Risk</th><th>Prob.</th><th>Impact</th><th>Mitigation</th><th>Owner</th></tr>
+    <tr><td>R1</td><td>Vietnam PDPL compliance tightening</td><td>Medium</td><td>High</td><td>Legal quarterly review + track SBV circulars</td><td>Security & Compliance</td></tr>
+    <tr><td>R2</td><td>Restricted access to personal bureau data</td><td>Medium</td><td>High</td><td>Prioritise internal scores; delay CIC integration</td><td>Data Dept.</td></tr>
+    <tr><td>R3</td><td>Poor data completeness</td><td>High</td><td>Medium</td><td>Multi-source fusion + tolerance for missing (up to 50%)</td><td>DS</td></tr>
+    <tr><td>R4</td><td>Network isolation slows data ingestion</td><td>Medium</td><td>Medium</td><td>Apply for whitelist 4 weeks in advance; VPN backup</td><td>IT</td></tr>
+    <tr><td>R5</td><td>Model decay due to data drift</td><td>Medium</td><td>High</td><td>Monthly PSI monitoring; retrain if >0.25; keep baseline model</td><td>DS</td></tr>
+    <tr><td>R6</td><td>Go-live response rate below target</td><td>Medium</td><td>High</td><td>Canary release (50%/30%); fallback to rule-based list</td><td>Marketing</td></tr>
+    <tr><td>R7</td><td>Key personnel changes</td><td>Medium</td><td>Medium</td><td>Documentation + pair coding + knowledge transfer plan</td><td>PM</td></tr>
+    <tr><td>R8</td><td>Aggressive schedule</td><td>High</td><td>Medium</td><td>Parallel development of two products; shared data pipeline</td><td>PM</td></tr>
+  </table>
+
+  <h3>18.2 KPI Definitions</h3>
+  <table>
+    <tr><th>Product</th><th>KPI Type</th><th>Metric</th><th>Baseline</th><th>Target</th><th>Method</th></tr>
+    <tr><td>Personal Unsecured Loan</td><td>Primary</td><td>Response rate of top 20% of model output list</td><td>A = historical response rate</td><td>>= 1.2 x A</td><td>30-day A/B test post-launch</td></tr>
+    <tr><td>Personal Unsecured Loan</td><td>Secondary</td><td>Final disbursement conversion rate</td><td>B = historical disbursement rate</td><td>>= 1.2 x B</td><td>Monthly disbursement data</td></tr>
+    <tr><td>Mortgage Loan</td><td>Primary</td><td>Response rate of top 20%</td><td>A = historical</td><td>>= 1.2 x A</td><td>30-day A/B test</td></tr>
+    <tr><td>Mortgage Loan</td><td>Secondary</td><td>Final disbursement conversion rate</td><td>B = historical</td><td>>= 1.2 x B</td><td>Monthly data</td></tr>
+  </table>
+
+  <div class="callout callout-success">
+    <strong>Design Complete.</strong> This v2.0 detailed design incorporates all additions from BRD v2.4: 71 core + 24 optional features, dual-product dual-track model training (LR + LightGBM), WOE/IV feature engineering, temporal leakage audit, OOT validation, 5-layer Smart Sales business architecture, 8 UI/UX reference screens, PSI monitoring with auto-retrain triggers, fairness risk assessment, PMS/CDP/CRM integration, and 17-week project delivery plan.
+  </div>
+</section>
+
+</div>
+<script>
+if (window.mermaid) {
+  window.mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+}
+</script>
+</body>
+</html>

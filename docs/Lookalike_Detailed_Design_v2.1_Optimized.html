@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookalike Detailed Design v2.1 (Optimized)</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --bg-secondary: #f7f8fa; --bg-tertiary: #f0f1f3;
+    --text-primary: #1a1a2e; --text-secondary: #6b7280;
+    --border: #e5e7eb; --border-strong: #d1d5db;
+    --accent: #0f6e56; --accent-light: #e1f5ee;
+    --blue: #185fa5; --blue-light: #e6f1fb;
+    --amber: #854f0b; --amber-light: #faeeda;
+    --red: #a32d2d; --red-light: #fcebeb;
+    --coral: #d85a30; --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: var(--bg-tertiary); color: var(--text-primary); line-height: 1.7; font-size: 14px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .doc-header { background: linear-gradient(135deg, #0f6e56, #0b5442); color: white; padding: 40px 32px; border-radius: var(--radius-lg); margin-bottom: 24px; }
+  .doc-header h1 { font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+  .doc-header .subtitle { opacity: 0.9; margin-bottom: 20px; }
+  .doc-meta { display: flex; gap: 28px; flex-wrap: wrap; font-size: 13px; }
+  .doc-meta .label { opacity: 0.65; display: block; }
+  .toc, section { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 20px; }
+  .toc h2, section h2 { font-size: 20px; border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 16px; }
+  h3 { font-size: 16px; margin: 20px 0 10px; }
+  h4 { font-size: 14px; margin: 14px 0 8px; }
+  p, li { margin-bottom: 8px; }
+  ul, ol { padding-left: 22px; margin-bottom: 12px; }
+  a { color: var(--accent); }
+  code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--coral); }
+  pre { background: #1e2430; color: #e8eaed; padding: 14px; border-radius: var(--radius); overflow-x: auto; margin-bottom: 14px; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: inherit; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 13px; }
+  th { background: var(--bg-secondary); text-align: left; padding: 9px 10px; border-bottom: 2px solid var(--border-strong); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-opt { background: var(--accent-light); color: var(--accent); }
+  .badge-fix { background: var(--amber-light); color: var(--amber); }
+  .badge-new { background: var(--blue-light); color: var(--blue); }
+  .badge-risk { background: var(--red-light); color: var(--red); }
+  .callout { border-left: 4px solid; padding: 12px 14px; margin-bottom: 14px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 13px; }
+  .callout-info { border-color: var(--blue); background: var(--blue-light); }
+  .callout-warning { border-color: var(--amber); background: var(--amber-light); }
+  .callout-success { border-color: var(--accent); background: var(--accent-light); }
+  .callout-danger { border-color: var(--red); background: var(--red-light); }
+  .mermaid { text-align: center; margin: 12px 0 16px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .card-title { font-weight: 600; margin-bottom: 6px; }
+  .stat-row { display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0; }
+  .stat .num { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 12px; color: var(--text-secondary); }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>Lookalike Detailed Design v2.1 — Optimized</h1>
+  <div class="subtitle">基于 v2.0 全栈设计的可落地优化版：分阶段交付 · 对齐现有仓库 · 修正架构矛盾 · 强化在线/离线分离</div>
+  <div class="doc-meta">
+    <div><span class="label">Version</span><strong>2.1 Optimized</strong></div>
+    <div><span class="label">Base</span><strong>v2.0 (Aug 2026)</strong></div>
+    <div><span class="label">BRD</span><strong>Lookalike Audience &amp; Lead Generation</strong></div>
+    <div><span class="label">Repo</span><strong>yurui2023-star/Lookalike (FastAPI + LightGBM)</strong></div>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#ch0">优化总览（相对 v2.0 改了什么）</a></li>
+    <li><a href="#ch1">分阶段交付路线图（MVP → P1 → P2）</a></li>
+    <li><a href="#ch2">目标架构（在线 / 离线分离）</a></li>
+    <li><a href="#ch3">与现有代码库的映射</a></li>
+    <li><a href="#ch4">特征资产：71+24 与当前 CSV 的桥接</a></li>
+    <li><a href="#ch5">特征工程与防泄漏（落地规则）</a></li>
+    <li><a href="#ch6">双产品双轨建模（修正一致性）</a></li>
+    <li><a href="#ch7">数据模型精简与分区策略</a></li>
+    <li><a href="#ch8">API 设计（对齐 BRD FR，可演进）</a></li>
+    <li><a href="#ch9">打分与 Dashboard 性能优化</a></li>
+    <li><a href="#ch10">前端范围裁剪</a></li>
+    <li><a href="#ch11">安全 / 公平性 / 监控</a></li>
+    <li><a href="#ch12">风险清单与决策记录</a></li>
+  </ol>
+</div>
+
+<!-- CH0 -->
+<section id="ch0">
+  <h2>0. 优化总览 <span class="badge badge-opt">OPTIMIZED</span></h2>
+  <div class="callout callout-success">
+    <strong>结论：</strong>v2.0 业务对齐度高（双产品、71+24 特征、LR+LightGBM、阈值后置、全量打分），但存在<strong>一期过重、与现有仓库脱节、若干技术矛盾、落地顺序不清</strong>。v2.1 在不削弱 BRD 目标的前提下，把方案改成「可在当前 FastAPI 仓库上分阶段演进」的工程设计。
+  </div>
+
+  <h3>0.1 v2.0 保留的正确设计</h3>
+  <ul>
+    <li>Score / Threshold 分离；Generate 对 100% 有效候选打分</li>
+    <li>双产品（Personal Unsecured Loan / Mortgage）独立种子与模型</li>
+    <li>LightGBM 主模型 + LR+WOE 可解释基线</li>
+    <li>缺失率 / 同值率 / IV / P99 质量筛选；时间泄漏审计强制执行</li>
+    <li>Version 不可变；Dashboard 直方图预计算；导出 &gt;10,000 行拆分</li>
+    <li>PSI 监控与公平性评估方向正确</li>
+  </ul>
+
+  <h3>0.2 v2.0 → v2.1 关键优化点</h3>
+  <table>
+    <tr><th>#</th><th>问题（v2.0）</th><th>优化（v2.1）</th><th>影响</th></tr>
+    <tr><td>1</td><td>一期同时上 React Pro + PG + Redis + Celery + MinIO + Prometheus，过重</td><td>三阶段交付：MVP 单进程 API；P1 加异步任务与 PG；P2 再上完整前端与外部系统</td><td><span class="badge badge-opt">交付风险↓</span></td></tr>
+    <tr><td>2</td><td>未说明如何从现有仓库演进</td><td>明确模块映射：现有 <code>pipeline/</code> <code>features/</code> <code>modeling/</code> 直接复用</td><td><span class="badge badge-new">可落地</span></td></tr>
+    <tr><td>3</td><td>§2.3 写 XGBoost，§6 写 LR+LGB，不一致</td><td>统一为 <strong>LightGBM 主模型 + LR+WOE 基线</strong>；XGBoost 仅作备选，不入一期</td><td><span class="badge badge-fix">一致性</span></td></tr>
+    <tr><td>4</td><td>训练与打分耦合在同一服务叙事里</td><td>明确 <strong>Offline Training</strong> vs <strong>Online Scoring</strong>；训练产物进 Model Registry</td><td><span class="badge badge-opt">稳定性</span></td></tr>
+    <tr><td>5</td><td>71 特征与当前 <code>Bank_Marketing_Dataset.csv</code>（45 列）无映射</td><td>增加 Feature Adapter / Column Mapping；MVP 用现有 CSV，P1 切换宽表</td><td><span class="badge badge-new">数据桥接</span></td></tr>
+    <tr><td>6</td><td>API FR 编号与 BRD FR-01~09 不一致</td><td>统一 BRD FR 映射表；API 按资源分层，避免一次暴露 34 个端点</td><td><span class="badge badge-fix">可维护</span></td></tr>
+    <tr><td>7</td><td>Event Importance / RFM 仅点到为止</td><td>补齐 Observation Window 内按 Event 计算 R/F/M 的落地定义</td><td><span class="badge badge-new">BRD 对齐</span></td></tr>
+    <tr><td>8</td><td><code>scoring_result.feature_values JSONB</code> 存全特征会爆炸</td><td>默认只存 <code>customer_key + score + rank</code>；特征明细按需物化或抽样</td><td><span class="badge badge-risk">成本↓</span></td></tr>
+    <tr><td>9</td><td>AI Insights 无实现约束</td><td>一期用规则模板（Top features + 分布差异）；二期再接 LLM</td><td><span class="badge badge-opt">可控</span></td></tr>
+    <tr><td>10</td><td>JWT 自建认证，银行场景不现实</td><td>P1 对接企业 SSO / OIDC；本地开发保留 JWT mock</td><td><span class="badge badge-fix">安全</span></td></tr>
+    <tr><td>11</td><td>Cold Start 排除无算法细节</td><td>定义「无交易/无 App 行为」过滤规则与候选校验计数</td><td><span class="badge badge-new">完整性</span></td></tr>
+    <tr><td>12</td><td>AUC/KS 无固定门槛，但缺少业务验收包</td><td>增加 Lift@Top20%、转化漏斗、A/B 实验验收清单</td><td><span class="badge badge-opt">业务闭环</span></td></tr>
+  </table>
+</section>
+
+<!-- CH1 -->
+<section id="ch1">
+  <h2>1. 分阶段交付路线图</h2>
+  <div class="stat-row">
+    <div class="stat"><div class="num">MVP</div><div class="label">现有仓库增强</div></div>
+    <div class="stat"><div class="num">P1</div><div class="label">可运营后端</div></div>
+    <div class="stat"><div class="num">P2</div><div class="label">全栈 + 集成</div></div>
+  </div>
+
+  <table>
+    <tr><th>阶段</th><th>目标</th><th>范围</th><th>不做</th><th>验收</th></tr>
+    <tr>
+      <td><strong>MVP</strong><br/>当前仓库</td>
+      <td>用真实 Bank Marketing 数据跑通训练/打分/EDA</td>
+      <td>FastAPI；LightGBM；IV/var_filter；EDA Excel；Dashboard JSON；样本 CSV 上传打分</td>
+      <td>React 前端、Celery、PG、CDP/PMS 实时集成、Recurring</td>
+      <td>AUC/AP 可复现；100% 候选打分；阈值过滤后置；单测通过</td>
+    </tr>
+    <tr>
+      <td><strong>P1</strong></td>
+      <td>Process 生命周期 + 异步打分 + 持久化</td>
+      <td>PostgreSQL；Model Registry；Celery 打分任务；版本不可变；导出拆分；Audit Log；OIDC</td>
+      <td>完整 Ant Design Pro 8 屏；CRM 推送；全量客户库扫描</td>
+      <td>Create→Generate→Dashboard→Export 闭环；失败可 Retry</td>
+    </tr>
+    <tr>
+      <td><strong>P2</strong></td>
+      <td>BRD 全功能 + 外部系统</td>
+      <td>React 前端 8 屏；CDP/PMS；Recurring；Conversion 报表；PSI 自动告警；Mortgage 24 可选特征</td>
+      <td>—</td>
+      <td>双产品上线；A/B 提升可量化；PSI&gt;0.25 可触发重训流程</td>
+    </tr>
+  </table>
+
+  <div class="callout callout-info">
+    <strong>原则：</strong>每一阶段结束都必须有可演示的垂直切片，而不是「等所有层建完再联调」。v2.0 的组件清单保留为 P2 目标态，不作为 MVP 启动条件。
+  </div>
+</section>
+
+<!-- CH2 -->
+<section id="ch2">
+  <h2>2. 目标架构（在线 / 离线分离）</h2>
+  <div class="mermaid">
+  flowchart LR
+    subgraph Offline["Offline Training Plane"]
+      DS[Data Warehouse / Feature Tables]
+      FE[Feature Engineering + Leakage Audit]
+      TR[Train LR + LightGBM]
+      REG[(Model Registry + Artifacts)]
+      MON[PSI / Fairness Jobs]
+    end
+    subgraph Online["Online Serving Plane"]
+      UI[Web UI / API Clients]
+      API[FastAPI Process APIs]
+      SC[Scoring Workers]
+      DB[(PostgreSQL)]
+      RD[(Redis Cache)]
+      OBJ[(Object Storage)]
+    end
+    subgraph Ext["External"]
+      CDP[CDP Read]
+      PMS[PMS Sync]
+      CRM[CRM Optional]
+    end
+    DS --> FE --> TR --> REG
+    REG --> SC
+    UI --> API --> SC
+    API --> DB
+    SC --> DB
+    SC --> RD
+    API --> OBJ
+    CDP --> API
+    PMS --> REG
+    API -.-> CRM
+    MON --> REG
+  </div>
+
+  <h3>2.1 关键修正：训练 ≠ 打分</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Offline（训练）</div>
+      <ul>
+        <li>按产品定义 Seed / Negative</li>
+        <li>Observation / Performance Window</li>
+        <li>WOE/IV、泄漏审计、OOT</li>
+        <li>产出：模型文件、feature_list、woe_maps、metrics</li>
+        <li>频率：月度 / PSI 触发，不跟每次 Generate 绑定</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Online（打分）</div>
+      <ul>
+        <li>加载已部署模型版本</li>
+        <li>对候选集批量推理</li>
+        <li>写 version + scores + histogram</li>
+        <li>阈值仅在 Dashboard / Export 使用</li>
+        <li>频率：用户触发或 Recurring</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>2.2 一期技术栈（裁剪后）</h3>
+  <table>
+    <tr><th>层</th><th>MVP</th><th>P1</th><th>P2（=v2.0 目标态）</th></tr>
+    <tr><td>API</td><td>FastAPI（现有）</td><td>FastAPI + OIDC</td><td>同左 + 限流网关</td></tr>
+    <tr><td>ML</td><td>LightGBM（现有）</td><td>+ LR/WOE + Registry</td><td>+ PSI / Retrain jobs</td></tr>
+    <tr><td>DB</td><td>本地文件 / SQLite 可选</td><td>PostgreSQL 15</td><td>分区 + 归档</td></tr>
+    <tr><td>Queue</td><td>同步 / BackgroundTasks</td><td>Celery + Redis</td><td>+ Beat Recurring + DLQ</td></tr>
+    <tr><td>UI</td><td>Swagger + 脚本</td><td>轻量管理页或保留 API</td><td>React + Ant Design Pro</td></tr>
+    <tr><td>Storage</td><td>本地 <code>output/</code></td><td>MinIO/S3</td><td>同左</td></tr>
+  </table>
+</section>
+
+<!-- CH3 -->
+<section id="ch3">
+  <h2>3. 与现有代码库的映射</h2>
+  <p>仓库 <code>Lookalike</code> 已具备可运行的 ML 内核。v2.1 要求<strong>扩展而非重写</strong>。</p>
+  <table>
+    <tr><th>现有模块</th><th>v2.0 设计位置</th><th>演进动作</th></tr>
+    <tr><td><code>src/lookalike/preprocessing/missing_outliers.py</code></td><td>FeatureEngineeringService</td><td>保留；补 skew 触发的 P99 与报告结构化</td></tr>
+    <tr><td><code>src/lookalike/features/iv.py</code></td><td>WOE/IV + var_filter</td><td>保留；增加 WOE map 持久化供 LR</td></tr>
+    <tr><td><code>src/lookalike/modeling/lightgbm_model.py</code></td><td>Training / Inference</td><td>拆分为 train / predict / importance；增加 LR 基线</td></tr>
+    <tr><td><code>src/lookalike/eda/report.py</code></td><td>Seed/Candidate analysis</td><td>保留 Excel；另产出 JSON 供 API</td></tr>
+    <tr><td><code>src/lookalike/pipeline/service.py</code></td><td>ScoringService 编排</td><td>升级为 Process-aware：绑定 product_model_id + model_version</td></tr>
+    <tr><td><code>src/lookalike/main.py</code></td><td>API Gateway 层</td><td>按资源拆 router；保持现有 5 个核心端点为 MVP</td></tr>
+    <tr><td><code>data/Bank_Marketing_Dataset.csv</code></td><td>训练样本</td><td>作为 MVP 数据源；P1 用 Feature Adapter 接宽表</td></tr>
+    <tr><td><code>scripts/full_process.py</code></td><td>Offline training CLI</td><td>保留为训练入口；P1 写入 Model Registry</td></tr>
+  </table>
+
+  <pre><code>推荐目标目录（渐进演进，不一次搬家）
+src/lookalike/
+  api/                 # routers: process, model, score, dashboard
+  domain/              # process, version, product_model entities (P1)
+  pipeline/            # 现有编排（继续用）
+  features/ modeling/ preprocessing/ eda/   # 现有 ML 内核
+  adapters/            # column_map, cdp_client (P1+)
+  workers/             # celery tasks (P1+)</code></pre>
+</section>
+
+<!-- CH4 -->
+<section id="ch4">
+  <h2>4. 特征资产：71+24 与当前 CSV 的桥接</h2>
+  <div class="callout callout-warning">
+    <strong>现实约束：</strong>当前生产 CSV 有 45 列（人口统计、资产、产品持有、交易行为、营销触达、目标变量），与 BRD 71 核心特征并非一一同名。必须引入 <strong>Feature Adapter</strong>，禁止在业务代码里散落硬编码列名。
+  </div>
+
+  <h3>4.1 三层特征视图</h3>
+  <table>
+    <tr><th>层</th><th>内容</th><th>何时启用</th></tr>
+    <tr><td>L0 可用列</td><td>当前 CSV 实际字段（Age, AnnualIncome, MarketingScore…）</td><td>MVP 立即</td></tr>
+    <tr><td>L1 核心 71</td><td>BRD 统一核心特征（含 MB 增补 61–71）</td><td>P1 宽表就绪后</td></tr>
+    <tr><td>L2 抵押可选 24</td><td>Settlement / Counterparty 特征</td><td>P2 Mortgage 产品</td></tr>
+  </table>
+
+  <h3>4.2 MVP 列映射示例（Bank Marketing → 语义特征）</h3>
+  <table>
+    <tr><th>CSV 列</th><th>语义 / 近似 BRD 特征</th><th>组别</th></tr>
+    <tr><td>Age</td><td>age</td><td>Demographics</td></tr>
+    <tr><td>AnnualIncome / NetWorth / CreditScore / CreditLimit / DTI</td><td>income / wealth / credit capacity</td><td>Financial</td></tr>
+    <tr><td>AccountBalance / NumBankProducts / Holdings flags</td><td>relationship depth</td><td>Banking Relationship</td></tr>
+    <tr><td>TotalTransactions / AvgTransactionValue / App logins</td><td>behaviour intensity</td><td>Transaction / App</td></tr>
+    <tr><td>LastContact* / CallResponseScore / MarketingScore</td><td>campaign response propensity</td><td>Marketing</td></tr>
+    <tr><td>TermDepositSubscribed</td><td>label（MVP 代理目标）</td><td>Target</td></tr>
+    <tr><td>ResponsePropensity</td><td><strong>必须剔除</strong>（泄漏 / 派生分）</td><td>Excluded</td></tr>
+  </table>
+
+  <h3>4.3 Adapter 接口</h3>
+  <pre><code>class FeatureAdapter(Protocol):
+    def to_model_frame(self, raw: pd.DataFrame, product: str) -> pd.DataFrame: ...
+    def feature_list(self, product: str) -> list[str]: ...
+    def leakage_denylist(self, product: str) -> list[str]: ...
+
+# MVP: CsvBankMarketingAdapter
+# P1: WideTableAdapter(feature_catalog from DB)
+# P2: MortgageOptionalMixin</code></pre>
+</section>
+
+<!-- CH5 -->
+<section id="ch5">
+  <h2>5. 特征工程与防泄漏（落地规则）</h2>
+  <p>保留 v2.0 流水线顺序，补充可执行判定：</p>
+  <div class="mermaid">
+  flowchart LR
+    A[Extract] --> B[Same-CIF Exclude]
+    B --> C[Cold-start Filter]
+    C --> D[Missing / Identical / IV Screen]
+    D --> E[P99 Cap if skew high]
+    E --> F[Temporal Leakage Audit]
+    F --> G[WOE for LR / Raw for LGB]
+    G --> H[Feature Store / Artifact]
+  </div>
+
+  <h3>5.1 Cold Start 过滤（补齐）</h3>
+  <table>
+    <tr><th>规则</th><th>定义</th><th>动作</th></tr>
+    <tr><td>无有效行为</td><td>Observation Window 内交易次数=0 且 App 活跃天数为 0</td><td>不进入 Lookalike 覆盖；计入 <code>insufficient_data</code></td></tr>
+    <tr><td>身份无法映射</td><td>上传 ID 无法匹配 CDP HostCif / 备用键</td><td>计入 <code>unmapped</code>；不打分</td></tr>
+    <tr><td>硬性不合格</td><td>不满足产品 eligibility</td><td>不进候选池（与负样本定义区分）</td></tr>
+  </table>
+
+  <h3>5.2 时间泄漏强制清单（训练前阻断）</h3>
+  <ul>
+    <li>放款后才存在的字段（当前贷款余额、放款日）</li>
+    <li>营销触达结果（接触后才知道）</li>
+    <li>他模型输出分（如 <code>ResponsePropensity</code>）</li>
+    <li>纯标识字段（CIF、证件号）</li>
+    <li>候选池内恒定的 eligibility 字段（无区分度）</li>
+  </ul>
+  <div class="callout callout-danger">任一 denylist 字段残留 → 训练任务失败并写 Audit，不允许「警告后继续」。</div>
+
+  <h3>5.3 Event Importance / RFM（BRD 补齐）</h3>
+  <p>对 Observation Window 内每个业务 Event（Deposit / Transfer / Billing / App Login…）计算：</p>
+  <ul>
+    <li><strong>R</strong>ecency：距最近一次事件天数</li>
+    <li><strong>F</strong>requency：窗口内次数</li>
+    <li><strong>M</strong>onetary：窗口内金额均值或总和（按事件定义）</li>
+  </ul>
+  <p>Dashboard 同时展示：静态 Feature Importance（模型 gain/WOE）与 Event Importance（RFM 相关或置换重要性）。MVP 可先用模型特征重要性近似，P1 补 RFM 报表。</p>
+</section>
+
+<!-- CH6 -->
+<section id="ch6">
+  <h2>6. 双产品双轨建模（修正一致性）</h2>
+  <div class="callout callout-info">统一口径：每产品训练 <strong>LR+WOE（baseline）</strong> 与 <strong>LightGBM（primary）</strong>。推理默认 primary；监管/解释场景可切换 baseline。</div>
+
+  <h3>6.1 样本定义（保留 v2.0，强调负样本语义）</h3>
+  <ul>
+    <li>正样本：已获批并放款、逾期可控、满足观察期</li>
+    <li>负样本：<strong>有机会但未转化</strong>的合格客群，不是「坏客户」</li>
+    <li>排除：员工/测试/销户/身故/硬性不合格</li>
+  </ul>
+
+  <h3>6.2 切分与评估</h3>
+  <table>
+    <tr><th>项</th><th>v2.1 规定</th></tr>
+    <tr><td>随机切分</td><td>60/20/20，分层抽样</td></tr>
+    <tr><td>OOT</td><td>必须；时间窗晚于训练窗</td></tr>
+    <tr><td>技术指标</td><td>AUC、KS、AP、Lift@Top20% — 诊断用，不设一刀切门槛</td></tr>
+    <tr><td>业务验收</td><td>A/B 或 holdout 投放：高分段转化 ≥ 对照组；Top20% Lift ≥ 1.2 作为<strong>参考目标</strong>而非硬门禁</td></tr>
+    <tr><td>过拟合</td><td>报告 Train-Test KS 差；异常则阻断部署</td></tr>
+  </table>
+
+  <h3>6.3 Model Registry 最小字段</h3>
+  <pre><code>model_registry:
+  product_code, model_type(lr_woe|lightgbm), role(primary|baseline),
+  version, artifact_uri, feature_list, woe_maps?,
+  metrics_json, training_config_json, status(training|validated|deployed|retired),
+  created_at, created_by</code></pre>
+</section>
+
+<!-- CH7 -->
+<section id="ch7">
+  <h2>7. 数据模型精简与分区策略</h2>
+  <h3>7.1 表清单（P1 最小集）</h3>
+  <table>
+    <tr><th>表</th><th>用途</th><th>相对 v2.0</th></tr>
+    <tr><td>product_model</td><td>产品与种子规则</td><td>保留</td></tr>
+    <tr><td>model_registry</td><td>模型版本</td><td>保留</td></tr>
+    <tr><td>lookalike_process</td><td>流程配置</td><td>保留</td></tr>
+    <tr><td>process_version</td><td>不可变运行版本</td><td>保留</td></tr>
+    <tr><td>scoring_result</td><td>客户分</td><td><strong>精简列</strong></td></tr>
+    <tr><td>analysis_snapshot</td><td>Dashboard 预聚合</td><td>保留</td></tr>
+    <tr><td>export_history / audit_log</td><td>导出与审计</td><td>保留</td></tr>
+    <tr><td>feature_catalog</td><td>71+24 主数据</td><td>P1 引入</td></tr>
+    <tr><td>recurring_schedule / psi_monitoring</td><td>调度与监控</td><td>P2</td></tr>
+  </table>
+
+  <h3>7.2 scoring_result 优化 <span class="badge badge-risk">COST</span></h3>
+  <pre><code>-- v2.0 风险：每行塞 feature_values JSONB → 百万级膨胀
+-- v2.1 默认：
+CREATE TABLE scoring_result (
+  version_id   BIGINT NOT NULL,
+  customer_key TEXT   NOT NULL,
+  similarity_score NUMERIC(6,4) NOT NULL,
+  score_rank   INT,
+  scored_at    TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (version_id, customer_key)
+) PARTITION BY LIST (version_id);
+
+-- 可选明细表（抽样或按需物化，不做默认写入）
+-- scoring_feature_detail(version_id, customer_key, features JSONB)</code></pre>
+
+  <h3>7.3 保留策略</h3>
+  <ul>
+    <li>Completed version 原始分：默认保留 90 天，可配置</li>
+    <li>analysis_snapshot 与 export_history：保留更久（≥12 个月）供 Recurring 对比</li>
+    <li>audit_log：不可 UPDATE/DELETE（保留 v2.0 触发器）</li>
+  </ul>
+</section>
+
+<!-- CH8 -->
+<section id="ch8">
+  <h2>8. API 设计（对齐 BRD，分阶段暴露）</h2>
+  <h3>8.1 BRD FR 映射（修正编号混乱）</h3>
+  <table>
+    <tr><th>BRD FR</th><th>能力</th><th>MVP API</th><th>P1+</th></tr>
+    <tr><td>FR-01</td><td>Process 列表管理</td><td>—</td><td><code>/processes</code> CRUD / duplicate / retry</td></tr>
+    <tr><td>FR-02</td><td>创建 Process</td><td>—</td><td><code>POST /processes</code> + recurring</td></tr>
+    <tr><td>FR-03/04</td><td>Sample / Potential 选择</td><td>上传 CSV</td><td>Segment / Full-base</td></tr>
+    <tr><td>FR-05</td><td>Feature &amp; Event Importance</td><td><code>/features/analyze</code> <code>/eda</code></td><td>seed/candidate analysis</td></tr>
+    <tr><td>FR-06</td><td>Generate Lookalike</td><td><code>/model/train</code> <code>/lookalike/score</code></td><td><code>/processes/{id}/generate</code></td></tr>
+    <tr><td>FR-07</td><td>Dashboard</td><td><code>/dashboard</code></td><td>version dashboard + histogram</td></tr>
+    <tr><td>FR-08</td><td>Conversion</td><td>—</td><td>P2 reporting</td></tr>
+    <tr><td>FR-09</td><td>Audit</td><td>—</td><td>P1 audit-logs</td></tr>
+  </table>
+
+  <h3>8.2 API 演进原则</h3>
+  <ul>
+    <li>MVP 保持现有 5 个核心端点，不一次上 30+ 接口</li>
+    <li>P1 引入 process/version 资源后，旧端点标记 deprecated，保留 1 个大版本兼容</li>
+    <li>阈值参数只出现在 Dashboard / Export / Classify，不出现在 Create Process</li>
+    <li>Generate 始终异步（P1）；返回 <code>version_id</code> + WebSocket/轮询进度</li>
+  </ul>
+</section>
+
+<!-- CH9 -->
+<section id="ch9">
+  <h2>9. 打分与 Dashboard 性能优化</h2>
+  <table>
+    <tr><th>场景</th><th>v2.0</th><th>v2.1 优化</th></tr>
+    <tr><td>批量推理</td><td>10k batch</td><td>保留；按模型内存自适应 5k–50k；失败批次可重试</td></tr>
+    <tr><td>阈值滑条</td><td>Redis 100-bin 直方图本地求和</td><td>保留；首屏只拉 snapshot，不扫明细表</td></tr>
+    <tr><td>全量客户库</td><td>确认框 + 估时</td><td>强制二次确认；默认离峰 Recurring；限制并发 job</td></tr>
+    <tr><td>导出 &gt;10k</td><td>拆文件</td><td>异步导出任务 + 分片对象存储；UI 只轮询状态</td></tr>
+    <tr><td>AI Insights</td><td>未定义</td><td>规则模板：Top5 特征、seed vs scored 差异、分数带人数；P2 可接 LLM</td></tr>
+  </table>
+
+  <pre><code># 阈值滑条：前端本地计算，无需重跑模型
+count(score &gt;= t) = sum(histogram.counts[i] for bin_i &gt;= t)</code></pre>
+</section>
+
+<!-- CH10 -->
+<section id="ch10">
+  <h2>10. 前端范围裁剪</h2>
+  <ul>
+    <li><strong>MVP：</strong>不强制前端；Swagger + CLI 即可验证模型与打分</li>
+    <li><strong>P1：</strong>可先做最小 Process 控制台（列表 / 创建 / 进度 / Dashboard），或继续 API-only</li>
+    <li><strong>P2：</strong>落地 v2.0 的 8 个 BRD 参考屏（Ant Design Pro）</li>
+  </ul>
+  <div class="callout callout-warning">避免「前端 8 屏与后端契约未稳时并行大开」——先冻结 Dashboard / Generate / Export 的 JSON 契约再铺 UI。</div>
+</section>
+
+<!-- CH11 -->
+<section id="ch11">
+  <h2>11. 安全 / 公平性 / 监控</h2>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">安全（优化）</div>
+      <ul>
+        <li>P1：企业 SSO / OIDC，不用长期自建用户库</li>
+        <li>RBAC：Marketing / DS / Admin / Auditor</li>
+        <li>导出下载短时签名 URL</li>
+        <li>审计日志不可篡改</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">公平性与监控</div>
+      <ul>
+        <li>按 gender / age_band / region 监控转化率差</li>
+        <li>PSI &gt; 0.25 → 告警工单，不自动盲切流量</li>
+        <li>重训需人工 Approve 后切换 primary</li>
+        <li>敏感特征默认不进入解释文案对外展示</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CH12 -->
+<section id="ch12">
+  <h2>12. 风险清单与决策记录</h2>
+  <table>
+    <tr><th>风险</th><th>等级</th><th>缓解</th></tr>
+    <tr><td>一期范围过大导致无法上线</td><td><span class="badge badge-risk">高</span></td><td>强制 MVP→P1→P2；本文件为范围门禁</td></tr>
+    <tr><td>特征宽表未就绪</td><td><span class="badge badge-risk">高</span></td><td>Feature Adapter + 现有 CSV 先行</td></tr>
+    <tr><td>打分明细存储成本</td><td><span class="badge badge-fix">中</span></td><td>去掉默认 JSONB 全特征；版本级分区与 TTL</td></tr>
+    <tr><td>模型指标无固定门槛引发争议</td><td><span class="badge badge-fix">中</span></td><td>业务 Lift / A/B 验收包前置签字</td></tr>
+    <tr><td>训练泄漏</td><td><span class="badge badge-risk">高</span></td><td>强制 denylist；CI 增加泄漏单测</td></tr>
+    <tr><td>全量客户库打分打垮集群</td><td><span class="badge badge-fix">中</span></td><td>并发限额、离峰窗口、队列隔离</td></tr>
+  </table>
+
+  <h3>12.1 决策记录（ADR 摘要）</h3>
+  <ol>
+    <li>推理主模型固定为 LightGBM；LR 仅解释/合规。</li>
+    <li>阈值永不进入 Create Process 输入。</li>
+    <li>训练与 Generate 解耦；Generate 只读已部署模型。</li>
+    <li>scoring_result 不默认存全量特征快照。</li>
+    <li>前端完整 8 屏放到 P2，不阻塞模型价值验证。</li>
+  </ol>
+
+  <div class="callout callout-success">
+    <strong>落地建议（下一步）：</strong>
+    1）按本文件把仓库目录演进到 <code>api/</code> + <code>adapters/</code>；
+    2）为真实 CSV 固化 Feature Adapter 与泄漏 denylist 单测；
+    3）P1 引入 <code>process_version</code> + 异步打分，再考虑 React。
+  </div>
+</section>
+
+<p style="text-align:center;color:#6b7280;margin:24px 0;">Lookalike Detailed Design v2.1 Optimized · 基于 v2.0 · 对齐现有 FastAPI/LightGBM 仓库</p>
+</div>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+</body>
+</html>
