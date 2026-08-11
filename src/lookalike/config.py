@@ -4,6 +4,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 DEFAULT_DATA_FILE = DATA_DIR / "Bank_Marketing_Dataset.csv"
 OUTPUT_DIR = PROJECT_ROOT / "output"
+# P1 durable store for processes / versions / candidate CSVs / score tables
+STORE_DIR = PROJECT_ROOT / "data" / "store"
 
 ID_COL = "ClientID"
 TARGET_COL = "TermDepositSubscribed"

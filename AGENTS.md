@@ -29,7 +29,9 @@ make test
 make run
 ```
 
-### Process async flow (P1-lite)
+### Process async flow (P1)
+
+Durable store under `data/store/` (processes, versions, candidate CSVs, score tables).
 
 ```bash
 # 1) train
@@ -43,11 +45,11 @@ curl localhost:8000/api/v1/versions/{vid}
 curl localhost:8000/api/v1/versions/{vid}/dashboard
 ```
 
-Async generate uses FastAPI `BackgroundTasks` (Celery reserved for full P1/P2).
+Async generate uses FastAPI `BackgroundTasks` (Celery reserved for later scale-out).
 
 ### Gotchas
 
-- Feature Adapter strips `ResponsePropensity` and `ClientID`; leakage denylist hard-fails if they remain.
+- Feature Adapter strips denylist fields (e.g. `ResponsePropensity`, `ClientID`); hard-fails if they remain.
 - Similarity threshold is a **post-scoring filter** only (not a create-process input).
-- In-memory process store resets when the API process restarts.
-- Full React frontend is **P2** — not in this codebase yet.
+- Process/version metadata survives API restart via `data/store/` (gitignored).
+- Full React frontend / CDP / Recurring / Conversion are **P2** — out of current scope.

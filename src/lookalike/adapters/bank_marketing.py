@@ -10,6 +10,8 @@ from lookalike.adapters.leakage import (
     COLD_START_ACTIVITY_COLUMNS,
     DEFAULT_DROP_FROM_MODELING,
     assert_no_leakage,
+    drop_denylist_columns,
+    find_leakage_columns,
 )
 from lookalike.config import ID_COL, LABEL_COL, TARGET_COL
 
@@ -39,7 +41,7 @@ class FeatureAdapter(Protocol):
 
 class BankMarketingCsvAdapter:
     """
-    MVP adapter for data/Bank_Marketing_Dataset.csv (45 columns).
+    Adapter for data/Bank_Marketing_Dataset.csv (CSV → model features).
 
     Maps ClientID / TermDepositSubscribed conventions and strips leakage fields.
     """
@@ -115,6 +117,10 @@ class BankMarketingCsvAdapter:
         totals = raw[activity_cols].fillna(0).sum(axis=1)
         return totals <= 0
 
+    def validate_raw_columns(self, raw: pd.DataFrame) -> list[str]:
+        """Return leakage columns present in raw input (informational before drop)."""
+        return find_leakage_columns(raw.columns.tolist())
+
     def to_model_frame(
         self,
         raw: pd.DataFrame,
@@ -125,11 +131,16 @@ class BankMarketingCsvAdapter:
     ) -> pd.DataFrame:
         frame = raw.copy()
 
-        drop_cols = [c for c in DEFAULT_DROP_FROM_MODELING if c in frame.columns]
-        if drop_id and self.id_col in frame.columns and self.id_col not in drop_cols:
-            drop_cols.append(self.id_col)
-        if drop_cols:
-            frame = frame.drop(columns=drop_cols)
+        # Drop all denylist columns first (case-insensitive), then ensure id drop policy.
+        keep = drop_denylist_columns(frame.columns.tolist())
+        # If drop_id is False, restore id_col when it was only removed via denylist.
+        if not drop_id and self.id_col in raw.columns and self.id_col not in keep:
+            keep = [self.id_col, *keep]
+        # Also drop any DEFAULT_DROP extras still present under exact names.
+        for col in DEFAULT_DROP_FROM_MODELING:
+            if col in keep and (drop_id or col != self.id_col):
+                keep = [c for c in keep if c != col]
+        frame = frame.loc[:, [c for c in keep if c in frame.columns]]
 
         if rename_target and self.target_col in frame.columns:
             frame = frame.rename(columns={self.target_col: LABEL_COL})
@@ -137,6 +148,7 @@ class BankMarketingCsvAdapter:
         if for_scoring and LABEL_COL in frame.columns:
             frame = frame.drop(columns=[LABEL_COL])
 
+        # Hard fail if anything denylisted still remains (e.g. unexpected casing left in).
         assert_no_leakage(frame.columns.tolist(), context=f"{self.product} model frame")
         return frame
 

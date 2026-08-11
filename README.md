@@ -81,12 +81,13 @@ make lint
 - [`docs/DESIGN_OPTIMIZATION.md`](docs/DESIGN_OPTIMIZATION.md) — short optimization summary
 - [`docs/Lookalike_Detailed_Design_v2.html`](docs/Lookalike_Detailed_Design_v2.html) — original full-stack design v2.0 (archived)
 
-## MVP + P1-lite (implemented)
+## MVP + P1 (implemented)
 
 - **Feature Adapter** (`src/lookalike/adapters/`) maps Bank Marketing CSV → model frame
-- **Leakage denylist** hard-fails if fields like `ResponsePropensity` remain
+- **Leakage denylist** hard-fails if fields like `ResponsePropensity` remain (case-insensitive)
 - **Process / Version** APIs with **async generate** (`BackgroundTasks`)
-- Full React UI is **P2** (not started)
+- **Durable store** at `data/store/` for processes, versions, candidates, scores
+- Full React UI / CDP / Recurring / Conversion are **P2** (not in this change)
 
 ```bash
 # Process async flow

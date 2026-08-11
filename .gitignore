@@ -18,6 +18,7 @@ htmlcov/
 
 # Generated outputs
 output/
+data/store/
 
 # Sample data (generated on first run; keep optional committed copy)
 # data/Bank_Marketing_Dataset.csv

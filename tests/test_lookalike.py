@@ -1,11 +1,13 @@
 import time
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+import lookalike.main as main_module
 from lookalike.config import ID_COL, LABEL_COL, TARGET_COL
 from lookalike.data.sample_dataset import generate_bank_marketing_dataset
-from lookalike.domain.process_store import ProcessStore
+from lookalike.domain.process_store import ProcessStore, reset_process_store_for_tests
 from lookalike.main import app
 from lookalike.pipeline.service import LookalikePipeline, prepare_modeling_frame
 
@@ -24,6 +26,14 @@ def synthetic_csv_file(sample_frame, tmp_path) -> str:
     raw.insert(0, ID_COL, [f"CIF{i:04d}" for i in range(len(raw))])
     raw.to_csv(csv_path, index=False)
     return str(csv_path)
+
+
+@pytest.fixture
+def isolated_store(tmp_path, monkeypatch):
+    """Point API process store at a temp durable root."""
+    store = reset_process_store_for_tests(tmp_path / "store")
+    monkeypatch.setattr(main_module, "get_process_store", lambda: store)
+    return store
 
 
 def test_health_endpoint():
@@ -83,12 +93,11 @@ def test_dashboard_endpoint(synthetic_csv_file: str):
     assert response.json()["model_trained"] is True
 
 
-def test_process_async_generate_flow(synthetic_csv_file: str):
-    # Ensure model trained
+def test_process_async_generate_flow(synthetic_csv_file: str, isolated_store):
     train = client.post("/api/v1/model/train", json={"data_path": synthetic_csv_file})
     assert train.status_code == 200
 
-    created = client.post("/api/v1/processes", json={"name": "MVP demo process"})
+    created = client.post("/api/v1/processes", json={"name": "P1 demo process"})
     assert created.status_code == 200
     process_id = created.json()["id"]
 
@@ -98,13 +107,14 @@ def test_process_async_generate_flow(synthetic_csv_file: str):
             files={"file": ("candidates.csv", handle, "text/csv")},
         )
     assert upload.status_code == 200
+    process = isolated_store.get_process(process_id)
+    assert process is not None and process.candidate_path
+    assert Path(process.candidate_path).exists()
 
     generate = client.post(f"/api/v1/processes/{process_id}/generate", json={})
     assert generate.status_code == 200
     version_id = generate.json()["id"]
-    assert generate.json()["status"] in {"pending", "running", "completed"}
 
-    # Wait for background task (TestClient runs BackgroundTasks inline after response)
     deadline = time.time() + 10
     status = None
     while time.time() < deadline:
@@ -123,10 +133,51 @@ def test_process_async_generate_flow(synthetic_csv_file: str):
     assert body["histogram"] is not None
     assert len(body["top_scores"]) > 0
 
+    versions = client.get(f"/api/v1/processes/{process_id}/versions")
+    assert versions.status_code == 200
+    assert len(versions.json()) >= 1
 
-def test_process_store_isolation():
-    store = ProcessStore()
+
+def test_process_store_persists_across_reload(tmp_path):
+    root = tmp_path / "store-a"
+    store = ProcessStore(root=root)
+    process = store.create_process("persist-me")
+    frame = generate_bank_marketing_dataset(n_rows=20, random_state=5)
+    store.set_candidates(process.id, frame)
+    version = store.create_version(process.id)
+    store.update_version(
+        version.id,
+        status="completed",
+        progress=1.0,
+        scored_candidates=20,
+        valid_candidates=20,
+        scores=[{"client_id": "CIF1", "similarity_score": 0.9, "rank": 1}],
+        histogram={"bins": [0, 1], "counts": [0, 1], "resolution": 1.0},
+    )
+
+    # Reload from disk
+    reloaded = ProcessStore(root=root)
+    assert reloaded.get_process(process.id) is not None
+    assert reloaded.get_process(process.id).status == "completed"
+    candidates = reloaded.get_candidates(process.id)
+    assert candidates is not None and len(candidates) == 20
+    version2 = reloaded.get_version(version.id)
+    assert version2 is not None
+    assert version2.status == "completed"
+    assert version2.scored_candidates == 20
+    assert len(version2.scores) == 1
+
+
+def test_process_store_isolation(tmp_path):
+    store = ProcessStore(root=tmp_path / "iso")
     p1 = store.create_process("a")
     p2 = store.create_process("b")
     assert p1.id != p2.id
     assert len(store.list_processes()) == 2
+
+
+def test_generate_requires_train_and_candidates(isolated_store):
+    created = client.post("/api/v1/processes", json={"name": "empty"})
+    process_id = created.json()["id"]
+    response = client.post(f"/api/v1/processes/{process_id}/generate", json={})
+    assert response.status_code == 400

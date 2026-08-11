@@ -109,6 +109,8 @@ class ProcessSummary(BaseModel):
     updated_at: datetime
     latest_version_id: str | None = None
     error_message: str | None = None
+    candidate_path: str | None = None
+    has_candidates: bool = False
 
 
 class GenerateRequest(BaseModel):

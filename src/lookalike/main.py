@@ -53,6 +53,8 @@ def _process_summary(record) -> ProcessSummary:
         updated_at=record.updated_at,
         latest_version_id=record.latest_version_id,
         error_message=record.error_message,
+        candidate_path=record.candidate_path,
+        has_candidates=bool(record.candidate_path),
     )
 
 
