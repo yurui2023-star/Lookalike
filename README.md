@@ -66,6 +66,12 @@ make test
 make lint
 ```
 
+## Documentation
+
+- [`docs/Lookalike_Detailed_Design_v2.1_Optimized.html`](docs/Lookalike_Detailed_Design_v2.1_Optimized.html) — optimized detailed design (phased delivery)
+- [`docs/DESIGN_OPTIMIZATION.md`](docs/DESIGN_OPTIMIZATION.md) — v2.0 → v2.1 change summary
+- [`docs/Lookalike_Detailed_Design_v2.html`](docs/Lookalike_Detailed_Design_v2.html) — original full-stack design (archived)
+
 ## Data
 
 Production dataset: **`data/Bank_Marketing_Dataset.csv`**
