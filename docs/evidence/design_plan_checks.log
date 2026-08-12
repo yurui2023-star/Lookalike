@@ -1,0 +1,208 @@
+================================================================================================
+DESIGN PLAN REVIEW — executable evidence
+dataset : data/Bank_Marketing_Dataset.csv (100,000 rows)
+database: connected
+================================================================================================
+
+------------------------------------------------------------------------------------------------
+FINDINGS
+------------------------------------------------------------------------------------------------
+
+[F-01] 规则编译器只参数化了值，列名仍是字符串拼接
+  status: REPRODUCED
+  hostile column name:  NetWorth` > 0 OR 1=1 -- 
+  generated WHERE:      `NetWorth` > 0 OR 1=1 -- ` > :v_0
+  bound params:         {'v_0': 999999999}   <- value is parameterised, identifier is not
+
+  executed against a live MySQL-family server (3-row fixture table):
+    the rule as written  (NetWorth > 999999999) -> 0 rows
+    same rule, hostile column name              -> 3 rows (exit=0) — the filter is gone
+    subquery into an unrelated table            -> 3 rows (exit=0) — t_secret_salary was read
+
+  §3.1/§11.1 claim '杜绝 SQL 注入'. Values are bound, identifiers are not, and a backtick in `column` closes the quote. Rule authors are the threat model here: anyone with INSERT on t_seed_config gets arbitrary SQL as the job's DB user.
+
+[F-02] 规则编译器在常规输入上崩溃或产出不可执行 SQL
+  status: REPRODUCED
+  empty conditions      -> IndexError: list index out of range
+  nested group w/o 'logic' key -> KeyError: 'column' (the branch test is `if "logic" in cond`, not `if "conditions" in cond`)
+  empty IN list         -> `city` IN :v_0 with params {'v_0': ()} (renders `IN ()`)
+  sqlalchemy IN binding -> OperationalError: (sqlite3.OperationalError) near "?": syntax error (needs bindparam(..., expanding=True))
+
+[F-03] 圈选规则用到的列仍然入模 → 模型学到的是规则本身
+  status: REPRODUCED
+  seeds: 4,318 positive / 12,210 negative
+  pos rule: HasMutualFunds='Yes' AND NetWorth>=100,000
+  neg rule: HasMutualFunds='No'  AND NetWorth>=100,000
+
+  plan behaviour (all feature-table columns in scope, 101 encoded features):  AUC = 1.0000
+  rule columns excluded (98 encoded features):                       AUC = 0.7235
+
+  AUC ~1.0 is the model rediscovering the WHERE clause, not lookalike similarity; every candidate with the holding flag off scores ~0 by construction.
+
+[F-04] train_lgb() 不返回清洗参数与入模特征清单 → 打分无法复现训练变换
+  status: REPRODUCED
+  returned by train_lgb(): model, auc, ks, cv_mean_ks, best_params, iv_table, feature_importance
+  needed by _score_all_candidates(): the fill/clip values, the IV-selected column list and its order, the category levels — none are returned or persisted
+
+  (1) training-time imputation not reapplied at scoring:
+      12.0% of rows change, mean |delta| = 0.0112, max |delta| = 0.5490
+      the top 10,000 lead list keeps only 8,821 of 10,000 customers (88.2%) — 1,179 leads swap in or out
+
+  (2) column order not pinned (a new column upstream, or SELECT * ordering):
+      LightGBM accepts the reordered frame silently, mean |delta| = 0.2120, top 10,000 overlap 24.2%
+
+  Both failures are silent: the batch job writes a full result set and logs status=1 success.
+
+[F-05] neg_ratio 以 max_seeds 为基数，正负比例失控
+  status: REPRODUCED
+  rule matches in the bundled data: 4,318 positive / 12,210 negative
+  config: max_seeds=100,000, neg_ratio=2.0 (i.e. 1:2 requested)
+
+  plan  `neg_limit = int(max_seeds * neg_ratio)`    -> 4,318 pos : 12,210 neg  = 1:2.8
+  fixed `neg_limit = int(len(pos_ids) * neg_ratio)` -> 4,318 pos : 8,636 neg  = 1:2.0
+
+  at production scale the gap widens: with a 3,000,000-row negative pool the plan takes 200,000 negatives against 4,318 positives = 1:46
+
+  neg_ratio only takes effect when the positive rule matches at least max_seeds rows, which is the opposite of a seed audience's usual shape.
+
+[F-06] holdout 既用于 early stopping 又用于上报指标，AUC/KS 偏乐观
+  status: REPRODUCED
+  optimism = AUC the job would report on its holdout, minus that same model's AUC on a 25,000-row pool it never touched. 40 resamples per size.
+    seeds=  400 (holdout  80 rows):  plan +0.0314 ± 0.0101   fixed -0.0004 ± 0.0105
+    seeds=1,000 (holdout 200 rows):  plan +0.0123 ± 0.0074   fixed -0.0001 ± 0.0073
+    seeds=4,000 (holdout 800 rows):  plan -0.0003 ± 0.0037   fixed -0.0049 ± 0.0034
+
+  SEED_MIN_COUNT defaults to 100, so 400-seed configs are inside the supported range, and that is where the reported AUC is most inflated.
+
+  §8.1 states 'X_val 在整个调参+训练过程中完全不可见'. It is visible: best_model.fit(..., eval_set=[(X_val_final, y_val)], callbacks=[lgb.early_stopping(...)]) picks the tree count on it, and the same rows then produce the AUC/KS written to t_execution_log.
+
+[F-07] 结果表以单个 MAXVALUE 分区起步，_ensure_partition() 必然失败
+  status: REPRODUCED
+  CREATE TABLE (exactly as specified in §3.2) -> exit=0 
+  ALTER TABLE ... ADD PARTITION               -> exit=1
+    ERROR 1481 (HY000) at line 1: MAXVALUE can only be used in last partition definition
+  ALTER TABLE ... REORGANIZE PARTITION        -> exit=0 (this is the fix)
+
+  MAXVALUE has to be the last range, so once it is the only partition no partition can be appended. §11.5 describes _ensure_partition() as idempotent; it would fail on its first run.
+
+[F-08] GET_LOCK 是会话级锁，与连接池和 7200s 超时的用法不符
+  status: REPRODUCED
+  session A holds the lock; session B (a different pooled connection) then:
+    RELEASE_LOCK from another session -> 0 (0 = not the owner, silently a no-op)
+    lock still held afterwards        -> 266
+    GET_LOCK(name, 3) blocked for      3.0s before returning 0
+  after session A's connection closes, IS_USED_LOCK -> NULL (NULL = auto-released)
+
+  Consequences for the plan: release_lock() run on a different pooled connection is a no-op; the lock disappears if the pool recycles the connection mid-run; and GET_LOCK(name, 7200) blocks for two hours before logging '本次跳过' instead of skipping. A CronJob wants GET_LOCK(name, 0) on a dedicated connection.
+
+[F-10] 候选池远大于训练总体，模型在未见过的分布上外推
+  status: REPRODUCED
+  training universe: NetWorth >= 100,000 (16,528 of 100,000 customers)
+  scoring pool:      every customer (100,000)
+  customers outside the training universe: 83,472 (83.5%)
+
+  of the top 10,000 leads by score, 71.2% come from outside the training universe — rows whose feature range the model never saw with either label.
+
+  Both rules pin the same AUM condition, so AUM carries no in-sample signal, yet the plan applies the model to the customers that condition excluded.
+
+[F-12] 正负样本规则可重叠，同一 customer 会同时拿到 1 和 0
+  status: REPRODUCED
+  pos rule: NetWorth >= 100,000     neg rule: AnnualIncome >= 40,000
+  rows matching both rules: 14,421
+  seed_df after the plan's pd.concat: 67,862 rows, 14,421 duplicated customer_id, 14,421 customers with both labels
+
+  The plan concatenates without a set difference or an assertion, so the same customer trains the model in both directions and also lands in both CV folds.
+
+[F-14] feature_columns 为空时拼出 `SELECT customer_id, *`，语法错误
+  status: REPRODUCED
+  plan: cols = ', '.join(...) if feature_cols else '*'
+        SELECT customer_id, {cols} FROM `{table}`
+
+  SELECT customer_id, * FROM `t_feat`          -> exit=1
+    ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '* FROM `t_feat`' at line 1
+  SELECT customer_id, `t_feat`.* FROM `t_feat` -> exit=0 (this is the fix)
+
+  The default path (feature_columns NULL = 'take every column', which §3.1 documents as supported) never runs.
+
+[F-15] categorical_feature 缺少 dtype 契约，训练或打分必然报错
+  status: REPRODUCED
+  fit on object dtype + categorical_feature -> ValueError: pandas dtypes must be int, float or bool.
+  predict on object dtype after training on category dtype -> ValueError: train and valid dataset categorical_feature do not match.
+
+  a category absent from training ('Antarctica') scores 0.139-0.654 with no warning
+
+  For the record, LightGBM does remap pandas category *labels* correctly, so re-running astype('category') per batch is not itself a defect — the defect is that the plan never fixes the dtype or the level set anywhere, and never carries them from training to scoring.
+
+[F-19] 字段类型容量不足：DECIMAL(3,2) / DECIMAL(8,4) / TEXT
+  status: REPRODUCED
+  similarity_score DECIMAL(8,4) on 100,000 scores: 100,000 distinct values collapse to 7,616
+    -> 92,384 rows (92.4%) share a score with another row, so `rank` is not deterministic across reruns
+
+  per-bin IV table for 43 features = 74,720 bytes (~1,738 bytes/feature)
+    -> TEXT (65,535 bytes) overflows at about 37 features; a wide bank feature table has several hundred
+
+  INSERT neg_ratio=20.0 into DECIMAL(3,2) -> exit=1
+    ERROR 1264 (22003) at line 1: Out of range value for column 'neg_ratio' at row 1
+  INSERT 70,000 bytes into TEXT           -> exit=1
+    ERROR 1406 (22001) at line 1: Data too long for column 'iv_table' at row 1
+
+------------------------------------------------------------------------------------------------
+PROPOSED FIXES
+------------------------------------------------------------------------------------------------
+
+[FIX-1] §6.2 加固后的规则编译器
+  status: VERIFIED
+  hostile column name    -> RuleError: 非法列名: 'NetWorth` OR 1=1 -- '
+  unknown column         -> RuleError: 列不存在于特征表: not_a_column
+  empty conditions       -> RuleError: conditions 不能为空
+  empty IN list          -> RuleError: IN 的 value 必须是非空列表
+
+  nested group without 'logic' -> (`aum` >= :v_0 OR (`product_a_holding` > :v_1 AND `city` IN :v_2))
+    params={'v_0': 1000000, 'v_1': 0, 'v_2': ['北京', '上海']} expanding=['v_2']
+    rule columns for leakage exclusion -> ['aum', 'city', 'product_a_holding']
+
+  executed with expanding bindparams -> 1 row(s) matched
+
+[FIX-2] §6.1 修订后的结果表 DDL 与窗口函数写入路径
+  status: VERIFIED
+  CREATE TABLE (RANGE COLUMNS on batch_date, PK = idempotency key) -> exit=0 
+  REORGANIZE p_max to append next month (the F-07 fix) -> exit=0 
+  rank + percentile computed in-database (the F-17 fix) -> exit=0 
+  retry writes the same rows again (the F-09 fix)      -> exit=0 
+  DROP PARTITION for retention (the F-07 fix)          -> exit=0 
+
+  rows after running the batch twice: 3 (3 staged rows, no duplicates)
+
+[FIX-3] §6.2 种子圈选 SQL 的 NULL 语义与 F-11 的确定性抽样
+  status: VERIFIED
+  fixture: c1 holding=5, c2 holding=0, c3 holding=NULL
+    positives  (holding > 0)                    -> c1
+    negatives  NOT (holding > 0)                -> c2   c3 silently dropped by three-valued logic
+    negatives  NOT COALESCE((holding > 0), 0)   -> c2,c3   correct
+
+  deterministic salted sampling (the F-11 fix):
+    ORDER BY CRC32(CONCAT(id,'salt2026')) LIMIT 2 -> c1,c3
+    same salt, run again                         -> c1,c3  reproducible
+    different salt                               -> c2,c3  different draw
+
+================================================================================================
+SUMMARY
+================================================================================================
+  REPRODUCED      F-01  规则编译器只参数化了值，列名仍是字符串拼接
+  REPRODUCED      F-02  规则编译器在常规输入上崩溃或产出不可执行 SQL
+  REPRODUCED      F-03  圈选规则用到的列仍然入模 → 模型学到的是规则本身
+  REPRODUCED      F-04  train_lgb() 不返回清洗参数与入模特征清单 → 打分无法复现训练变换
+  REPRODUCED      F-05  neg_ratio 以 max_seeds 为基数，正负比例失控
+  REPRODUCED      F-06  holdout 既用于 early stopping 又用于上报指标，AUC/KS 偏乐观
+  REPRODUCED      F-07  结果表以单个 MAXVALUE 分区起步，_ensure_partition() 必然失败
+  REPRODUCED      F-08  GET_LOCK 是会话级锁，与连接池和 7200s 超时的用法不符
+  REPRODUCED      F-10  候选池远大于训练总体，模型在未见过的分布上外推
+  REPRODUCED      F-12  正负样本规则可重叠，同一 customer 会同时拿到 1 和 0
+  REPRODUCED      F-14  feature_columns 为空时拼出 `SELECT customer_id, *`，语法错误
+  REPRODUCED      F-15  categorical_feature 缺少 dtype 契约，训练或打分必然报错
+  REPRODUCED      F-19  字段类型容量不足：DECIMAL(3,2) / DECIMAL(8,4) / TEXT
+  VERIFIED        FIX-1  §6.2 加固后的规则编译器
+  VERIFIED        FIX-2  §6.1 修订后的结果表 DDL 与窗口函数写入路径
+  VERIFIED        FIX-3  §6.2 种子圈选 SQL 的 NULL 语义与 F-11 的确定性抽样
+
+16 confirmed, 0 unconfirmed, 0 skipped

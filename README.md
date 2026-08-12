@@ -75,6 +75,11 @@ make lint
 | 中文 | [`docs/Lookalike_Detailed_Design_v2.1_Complete_ZH.html`](docs/Lookalike_Detailed_Design_v2.1_Complete_ZH.html) |
 | English | [`docs/Lookalike_Detailed_Design_v2.1_Complete_EN.html`](docs/Lookalike_Detailed_Design_v2.1_Complete_EN.html) |
 
+### Design reviews
+
+- [`docs/DESIGN_PLAN.md`](docs/DESIGN_PLAN.md) — 《Lookalike 定时打分服务 — 改造方案 v1.0》(proposal under review: API service → monthly batch job)
+- [`docs/DESIGN_PLAN_REVIEW.md`](docs/DESIGN_PLAN_REVIEW.md) — 评估报告 (26 findings, reproduced by `scripts/design_plan_checks.py`)
+
 ### Other design docs
 
 - [`docs/Lookalike_Detailed_Design_v2.1_Optimized.html`](docs/Lookalike_Detailed_Design_v2.1_Optimized.html) — v2.0 → v2.1 delta notes
