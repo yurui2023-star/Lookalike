@@ -89,7 +89,7 @@ FINDINGS
   status: REPRODUCED
   session A holds the lock; session B (a different pooled connection) then:
     RELEASE_LOCK from another session -> 0 (0 = not the owner, silently a no-op)
-    lock still held afterwards        -> 142
+    lock still held afterwards        -> 266
     GET_LOCK(name, 3) blocked for      3.0s before returning 0
   after session A's connection closes, IS_USED_LOCK -> NULL (NULL = auto-released)
 
@@ -173,6 +173,18 @@ PROPOSED FIXES
 
   rows after running the batch twice: 3 (3 staged rows, no duplicates)
 
+[FIX-3] §6.2 种子圈选 SQL 的 NULL 语义与 F-11 的确定性抽样
+  status: VERIFIED
+  fixture: c1 holding=5, c2 holding=0, c3 holding=NULL
+    positives  (holding > 0)                    -> c1
+    negatives  NOT (holding > 0)                -> c2   c3 silently dropped by three-valued logic
+    negatives  NOT COALESCE((holding > 0), 0)   -> c2,c3   correct
+
+  deterministic salted sampling (the F-11 fix):
+    ORDER BY CRC32(CONCAT(id,'salt2026')) LIMIT 2 -> c1,c3
+    same salt, run again                         -> c1,c3  reproducible
+    different salt                               -> c2,c3  different draw
+
 ================================================================================================
 SUMMARY
 ================================================================================================
@@ -191,5 +203,6 @@ SUMMARY
   REPRODUCED      F-19  字段类型容量不足：DECIMAL(3,2) / DECIMAL(8,4) / TEXT
   VERIFIED        FIX-1  §6.2 加固后的规则编译器
   VERIFIED        FIX-2  §6.1 修订后的结果表 DDL 与窗口函数写入路径
+  VERIFIED        FIX-3  §6.2 种子圈选 SQL 的 NULL 语义与 F-11 的确定性抽样
 
-15 confirmed, 0 unconfirmed, 0 skipped
+16 confirmed, 0 unconfirmed, 0 skipped

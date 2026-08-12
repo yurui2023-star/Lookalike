@@ -1,7 +1,7 @@
 # 《Lookalike 定时打分服务 — 改造方案 v1.0》评估报告
 
 > 评审对象：`DESIGN_PLAN.md`（v1.0，2026-08-12）
-> 评审方式：静态审阅 + 可执行验证（`scripts/design_plan_checks.py`：13 项发现全部复现，2 项修复建议已实测通过）
+> 评审方式：静态审阅 + 可执行验证（`scripts/design_plan_checks.py`：13 项发现全部复现，3 项修复建议已实测通过）
 > 验证环境：MySQL 系服务器（MariaDB 10.11）、LightGBM 4.7、`data/Bank_Marketing_Dataset.csv`（100,000 行）
 
 ---
@@ -46,12 +46,12 @@ make install
 .venv/bin/python scripts/design_plan_checks.py
 ```
 
-脚本把方案 §4.2 的 `_rule_to_sql` **原样**复制过来（文件内以 `PLAN VERBATIM` 标注），因此失败的是方案本身而不是转述。输出分两段：`FINDINGS` 复现问题，`PROPOSED FIXES` 实测本报告 §6.1 与 §6.2 给出的替代实现确实可用——修复建议不是纸面推演。
+脚本把方案 §4.2 的 `_rule_to_sql` **原样**复制过来（文件内以 `PLAN VERBATIM` 标注），因此失败的是方案本身而不是转述。输出分两段：`FINDINGS` 复现问题，`PROPOSED FIXES` 实测本报告 6.1 与 6.2 给出的替代实现确实可用——修复建议不是纸面推演。
 
 数据库类检查需要一个可达的 MySQL/MariaDB（通过 `REVIEW_DB_*` 环境变量配置），缺失时标记 SKIP；`sqlalchemy` 缺失时绑定参数检查同样 SKIP。完整输出见 `docs/evidence/design_plan_checks.log`。
 
 ```
-15 confirmed, 0 unconfirmed, 0 skipped
+16 confirmed, 0 unconfirmed, 0 skipped
 ```
 
 ---
@@ -286,13 +286,15 @@ SELECT customer_id FROM `{table}` WHERE {pos_where} LIMIT {max_seeds}
 
 没有 `ORDER BY` 的 `LIMIT` 返回的是存储引擎恰好先扫到的行，通常与主键顺序（开户时间、客户号段）强相关。当匹配数超过 `max_seeds` 时，拿到的是"最老的 N 个客户"而不是随机样本，且两次运行结果可能不同。
 
-**修复**：确定性哈希抽样，既无偏又可复现：
+**修复**：按加盐哈希排序取数，既无偏、又恰好取到 N 条、还可复现：
 
 ```sql
-WHERE {where} AND CRC32(CONCAT(customer_id, :salt)) % 1000 < :sample_permille
+SELECT customer_id FROM `{table}` WHERE {where}
+ ORDER BY CRC32(CONCAT(customer_id, :salt))
+ LIMIT :max_seeds
 ```
 
-`salt` 按 batch 固定并写入 `t_execution_log`，任何一次历史运行都能精确重放。
+实测同一 salt 两次运行取到同一批客户，换 salt 得到另一批。`salt` 按 batch 固定并写入 `t_execution_log`，任何一次历史运行都能精确重放。若匹配集过大不宜排序，可退化为按比例过滤 `CRC32(CONCAT(customer_id, :salt)) % 1000 < :permille`，代价是拿不到精确的 N。
 
 ### F-12 正负样本规则可以重叠
 
@@ -320,8 +322,10 @@ concat 后: 67,862 行，14,421 个重复 customer_id，14,421 个客户同时�
 SELECT f.*, 1 AS label FROM `t_customer_features` f WHERE {pos_where}
 UNION ALL
 SELECT f.*, 0 AS label FROM `t_customer_features` f
- WHERE {neg_where} AND NOT ({pos_where})
+ WHERE {neg_where} AND NOT COALESCE(({pos_where}), 0)
 ```
+
+`COALESCE` 不能省。SQL 的三值逻辑下，正样本规则引用的列若为 NULL，`{pos_where}` 求值为 NULL，`NOT NULL` 仍是 NULL，该行会被**静默排除在负样本之外**。实测三行样例（`holding` 取 5 / 0 / NULL）：`NOT (holding > 0)` 只返回 `c2`，`NOT COALESCE((holding > 0), 0)` 返回 `c2, c3`。特征表里 NULL 很常见，这一字之差会让负样本系统性地缺失一整类客户。
 
 种子量大时改为把种子 id 物化进临时表再 JOIN。
 
@@ -362,7 +366,7 @@ object dtype 上 fit + categorical_feature
 
 ### F-16 没有模型质量闸门，也没有漂移监控
 
-一个无人值守的月度作业，AUC 掉到 0.52 时会发生什么？按现在的流程：照常全量打分、照常写 2000 万行结果、`t_execution_log.status` 记 1（成功）、下游照常按这份名单去做营销触达。没有任何一个环节会拦住它。
+一个无人值守的月度作业，AUC 掉到 0.52 时会发生什么？按现在的流程：照常全量打分、照常覆盖写入全量结果、`t_execution_log.status` 记 1（成功）、下游照常按这份名单去做营销触达。没有任何一个环节会拦住它。
 
 对无人值守作业来说这是**最重要的一项运维补充**。建议：
 
@@ -650,13 +654,13 @@ feature_columns = [c for c in candidate_columns
                    and c.lower() not in LEAKAGE_DENYLIST_LOWER]   # 复用现有黑名单
 ```
 
-单次扫描完成圈选，同时消除重叠（F-12/F-13）：
+单次扫描完成圈选，同时消除重叠（F-12/F-13）。注意 `COALESCE` 不能省，理由见 F-13：
 
 ```sql
 SELECT f.*, 1 AS label FROM `t_customer_features` f WHERE {pos_where}
 UNION ALL
 SELECT f.*, 0 AS label FROM `t_customer_features` f
- WHERE {neg_where} AND NOT ({pos_where})
+ WHERE {neg_where} AND NOT COALESCE(({pos_where}), 0)
 ```
 
 ### 6.3 训练产物封装

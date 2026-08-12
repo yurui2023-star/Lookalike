@@ -1214,6 +1214,67 @@ def check_fix_result_schema() -> Result:
     return _fix_verdict("FIX-2", title, all(code == 0 for _, code, _ in steps), "\n".join(lines))
 
 
+def check_fix_seed_sql() -> Result:
+    title = "§6.2 种子圈选 SQL 的 NULL 语义与 F-11 的确定性抽样"
+    if not DB_UP:
+        return _skip("FIX-3", title, "no MySQL/MariaDB server available")
+
+    sql("DROP TABLE IF EXISTS t_null_demo")
+    sql("CREATE TABLE t_null_demo (customer_id VARCHAR(8), holding INT)")
+    sql("INSERT INTO t_null_demo VALUES ('c1',5),('c2',0),('c3',NULL)")
+
+    def ids(where_or_query: str, *, raw: bool = False) -> str:
+        query = (
+            where_or_query
+            if raw
+            else f"SELECT GROUP_CONCAT(customer_id) FROM t_null_demo WHERE {where_or_query}"
+        )
+        return sql_message(sql(query)[1])
+
+    positives = ids("(holding > 0)")
+    naive_neg = ids("NOT (holding > 0)")
+    safe_neg = ids("NOT COALESCE((holding > 0), 0)")
+
+    sample_a = ids(
+        "SELECT GROUP_CONCAT(customer_id) FROM (SELECT customer_id FROM t_null_demo"
+        " ORDER BY CRC32(CONCAT(customer_id, 'salt2026')) LIMIT 2) t",
+        raw=True,
+    )
+    sample_b = ids(
+        "SELECT GROUP_CONCAT(customer_id) FROM (SELECT customer_id FROM t_null_demo"
+        " ORDER BY CRC32(CONCAT(customer_id, 'salt2026')) LIMIT 2) t",
+        raw=True,
+    )
+    sample_c = ids(
+        "SELECT GROUP_CONCAT(customer_id) FROM (SELECT customer_id FROM t_null_demo"
+        " ORDER BY CRC32(CONCAT(customer_id, 'other')) LIMIT 2) t",
+        raw=True,
+    )
+
+    detail = "\n".join(
+        [
+            "fixture: c1 holding=5, c2 holding=0, c3 holding=NULL",
+            f"  positives  (holding > 0)                    -> {positives}",
+            f"  negatives  NOT (holding > 0)                -> {naive_neg}"
+            "   c3 silently dropped by three-valued logic",
+            f"  negatives  NOT COALESCE((holding > 0), 0)   -> {safe_neg}   correct",
+            "",
+            "deterministic salted sampling (the F-11 fix):",
+            f"  ORDER BY CRC32(CONCAT(id,'salt2026')) LIMIT 2 -> {sample_a}",
+            f"  same salt, run again                         -> {sample_b}  reproducible",
+            f"  different salt                               -> {sample_c}  different draw",
+        ]
+    )
+    works = (
+        positives == "c1"
+        and naive_neg == "c2"
+        and safe_neg == "c2,c3"
+        and sample_a == sample_b
+        and sample_a != sample_c
+    )
+    return _fix_verdict("FIX-3", title, works, detail)
+
+
 # --------------------------------------------------------------------------------------
 
 
@@ -1236,6 +1297,7 @@ CHECKS: list[Callable[[], Result]] = [
 FIX_CHECKS: list[Callable[[], Result]] = [
     check_fix_rule_compiler,
     check_fix_result_schema,
+    check_fix_seed_sql,
 ]
 
 
