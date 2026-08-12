@@ -1,6 +1,6 @@
 # 《Lookalike 定时打分服务 — 改造方案 v1.0》评估报告
 
-> 评审对象：`DESIGN_PLAN.md`（v1.0，2026-08-12）
+> 评审对象：[`docs/DESIGN_PLAN.md`](DESIGN_PLAN.md)（v1.0，2026-08-12）。下文的 §N 一律指方案原文的章节号，本报告自身的章节写作"本报告 N"。
 > 评审方式：静态审阅 + 可执行验证（`scripts/design_plan_checks.py`：13 项发现全部复现，3 项修复建议已实测通过）
 > 验证环境：MySQL 系服务器（MariaDB 10.11）、LightGBM 4.7、`data/Bank_Marketing_Dataset.csv`（100,000 行）
 
