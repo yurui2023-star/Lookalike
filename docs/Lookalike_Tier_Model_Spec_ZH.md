@@ -1,5 +1,7 @@
 # Lookalike 分层模型规格书：tier_a_core / tier_b_extended
 
+> **先读思路**：`docs/Lookalike_Model_思路_ZH.md`。本文是特征集与路由的展开，等思路确认后再改代码。
+>
 > 版本：v1.2 | 日期：2026-08-14
 > 输入：`MB_Bank_Lookalike_Feature_List_v1.2.xlsx`（69 核心 + 30 可选现金流）、BRD v2.4、业务诊断 v3.8
 > 上游框架：`docs/Lookalike_Model_Training_Scheme_ZH.md`（打分域分层、抽样与校准）

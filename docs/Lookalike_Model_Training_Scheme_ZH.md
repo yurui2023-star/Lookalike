@@ -1,5 +1,7 @@
 # Lookalike 模型训练与优化方案
 
+> **先读思路**：`docs/Lookalike_Model_思路_ZH.md`（只讲建模判断，不讲实现）。本文是同一思路的展开规格，等思路确认后再作为改代码的依据。
+>
 > 版本：v1.2 | 日期：2026-08-14
 > 输入：`Lookalike_Modeling_BRD_EN_v2.4.docx`、`MB_Bank_Business_Diagnosis_Analysis_v3.8.pptx`、`MB_Bank_Lookalike_Feature_List_v1.2.xlsx`
 > 范围：**模型训练与优化**（样本域、标签、抽样、训练、校准、评估、打分口径）。不含系统架构、API、前端与集成。
