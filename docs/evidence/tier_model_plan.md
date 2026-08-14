@@ -1,7 +1,8 @@
 # 分层模型细化 - Personal Unsecured Loan (Super Fast Unsecured Loan)
 
+> **不是 MB 项目数据。** A 部分读的是 v1.2 特征清单；B/C 部分跑在 `data/Bank_Marketing_Dataset.csv`（仓库 API 联调样例，定期存款标签）上，列名与 Lift/AUC **不得**当作分层模型规格的证据。
+
 输入：`MB_Bank_Lookalike_Feature_List_v1.2.xlsx`（69 核心 + 30 可选现金流）。
-A 部分来自真实特征清单；B/C 部分在模拟客群上验证分层筛选与建模机制，特征名为演示数据集的列名。
 
 ## A. 特征目录（v1.2）
 

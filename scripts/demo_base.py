@@ -1,9 +1,8 @@
 """Shared scaffolding for the modelling demos.
 
-The Bank Marketing CSV stands in for MB's feature mart. These helpers map it onto the five
-diagnosis dimensions and re-weight tier shares and conversion rates to the values in business
-diagnosis v3.8, so the demos exercise MB-like mechanics while the underlying feature/label
-association stays real. They are demo utilities, not part of the library.
+`data/Bank_Marketing_Dataset.csv` is the repo's bundled API sample (term-deposit label).
+It is not MB Lookalike project data and must not be cited as evidence for the training
+scheme. These helpers only exist so library smoke tests can run without a CIF-level mart.
 """
 
 from __future__ import annotations

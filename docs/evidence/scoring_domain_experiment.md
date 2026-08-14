@@ -1,8 +1,10 @@
 # 打分域实验 - Personal Unsecured Loan (Super Fast Unsecured Loan)
 
+> **不是 MB 项目数据。** `data/Bank_Marketing_Dataset.csv` 是仓库 API 联调用的公开样例（定期存款标签）。本文件只记录对该样例重采样后的脚本输出，**不得**当作 Lookalike 训练方案或分层模型规格的证据。
+
 产品档案 `personal_unsecured_loan`；依据 BRD v2.4 s2.1.1 / s2.2.1; diagnosis v3.8 p23。
 
-数据集 `data/Bank_Marketing_Dataset.csv` 作为特征宽表替身，分层占比与各层转化率按业务诊断 v3.8 重标定，验证的是方法机制而非 MB 真实转化水平。
+数据集 `data/Bank_Marketing_Dataset.csv` 分层占比与各层转化率按业务诊断 v3.8 重标定，仅用于检查代码路径能否跑通。
 
 ## 1. 四步筛选漏斗（诊断口径复现）
 

@@ -49,6 +49,7 @@ Async generate uses FastAPI `BackgroundTasks` (Celery reserved for later scale-o
 
 ### Gotchas
 
+- `data/Bank_Marketing_Dataset.csv` is the bundled API sample (term-deposit label), **not** MB Lookalike project data. Do not cite its metrics in the training scheme.
 - Feature Adapter strips denylist fields (e.g. `ResponsePropensity`, `ClientID`); hard-fails if they remain.
 - Similarity threshold is a **post-scoring filter** only (not a create-process input).
 - Process/version metadata survives API restart via `data/store/` (gitignored).

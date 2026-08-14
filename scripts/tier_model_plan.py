@@ -4,15 +4,9 @@
 Part A reads the v1.2 feature catalog (69 core + 30 optional) and derives the planned feature
 set, delivery dependencies and monotone constraints for each tier - no data required.
 
-Part B runs the per-tier screening (BRD 3.3 thresholds evaluated inside each tier) on the
-simulated base and shows which features survive where.
-
-Part C trains the two tier models on their own feature sets and compares four builds:
-
-  M1  tier_a_core   - core-pool sample, tier-A feature set
-  M2  tier_b_extended - whole-domain weighted sample, tier-B feature set
-  M3  tier_b_extended - tail-only weighted sample, tier-B feature set
-  M4  tier_b_extended - whole-domain weighted sample, full feature set (screening control)
+Part B/C smoke-test screening and training on `data/Bank_Marketing_Dataset.csv`. That CSV
+is the repo's bundled API sample (term-deposit label), **not** MB Lookalike project data.
+Do not cite Part B/C Lift/AUC in the tier-model spec.
 """
 
 from __future__ import annotations
@@ -203,9 +197,11 @@ def main() -> None:
     lines: list[str] = [
         f"# 分层模型细化 - {profile.display_name}",
         "",
+        "> **不是 MB 项目数据。** A 部分读的是 v1.2 特征清单；B/C 部分跑在 "
+        "`data/Bank_Marketing_Dataset.csv`（仓库 API 联调样例，定期存款标签）上，"
+        "列名与 Lift/AUC **不得**当作分层模型规格的证据。",
+        "",
         "输入：`MB_Bank_Lookalike_Feature_List_v1.2.xlsx`（69 核心 + 30 可选现金流）。",
-        "A 部分来自真实特征清单；B/C 部分在模拟客群上验证分层筛选与建模机制，"
-        "特征名为演示数据集的列名。",
         "",
     ]
     lines += catalog_section()

@@ -14,9 +14,9 @@ Reported for each strategy: per-tier calibration (predicted vs actual rate), exp
 calibration error, ranking power overall and inside each tier, and how much of the tail is
 recovered into the top-20% audience.
 
-The Bank Marketing CSV stands in for MB's feature mart. Tier shares and conversion rates are
-re-weighted to the diagnosis values, so the mechanics are MB-like while the underlying
-feature/label association stays real.
+The bundled CSV `data/Bank_Marketing_Dataset.csv` is **not** MB project data (term-deposit
+label, ~30% positives). This script only smoke-tests the scoring-domain code paths.
+Do not cite its AUC/Lift tables in the training scheme.
 """
 
 from __future__ import annotations
@@ -121,10 +121,14 @@ def main() -> None:
     lines: list[str] = [
         f"# 打分域实验 - {profile.display_name}",
         "",
+        "> **不是 MB 项目数据。** `data/Bank_Marketing_Dataset.csv` 是仓库 API 联调用的公开样例"
+        "（定期存款标签）。本文件只记录对该样例重采样后的脚本输出，**不得**当作 Lookalike "
+        "训练方案或分层模型规格的证据。",
+        "",
         f"产品档案 `{profile.key}`；依据 {profile.brd_reference}。",
         "",
-        "数据集 `data/Bank_Marketing_Dataset.csv` 作为特征宽表替身，"
-        "分层占比与各层转化率按业务诊断 v3.8 重标定，验证的是方法机制而非 MB 真实转化水平。",
+        "数据集 `data/Bank_Marketing_Dataset.csv` 分层占比与各层转化率按业务诊断 v3.8 重标定，"
+        "仅用于检查代码路径能否跑通。",
         "",
         "## 1. 四步筛选漏斗（诊断口径复现）",
         "",
