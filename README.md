@@ -105,25 +105,27 @@ curl localhost:8000/api/v1/versions/{vid}/dashboard
 
 ## Data
 
-Production dataset: **`data/Bank_Marketing_Dataset.csv`**
+Bundled API sample (not MB production data): **`data/Bank_Marketing_Dataset.csv`**
+
+This file is a public-style bank-marketing CSV used to smoke-test the API. It is **not** the MB Lookalike feature mart (no CIF-level Super Fast / Home Easy labels, not the v1.2 feature list). Do not use its AUC/Lift/IV as project evidence.
 
 | Property | Value |
 |----------|-------|
 | Rows | 100,000 |
 | Columns | 45 (incl. `ClientID`, target, features) |
 | Target | `TermDepositSubscribed` (0/1, ~30% positive) |
-| ID | `ClientID` (maps to BRD HostCif / CIF) |
+| ID | `ClientID` (demo key only; not MB HostCif) |
 | Excluded from modeling | `ResponsePropensity` (dropped automatically) |
 
 Key feature groups: demographics (`Age`, `Gender`, `MaritalStatus`, …), financials (`AnnualIncome`, `NetWorth`, `CreditScore`, …), product holdings, transaction/behavior, and marketing contact history.
 
 If the CSV file is missing locally, `python -m lookalike.data.sample_dataset` generates a small **synthetic fallback** for development only.
 
-### Run pipeline on real data
+### Run pipeline on the bundled sample
 
 ```bash
 python scripts/eda_report.py      # writes output/eda_report.xlsx
-python scripts/full_process.py    # clean → IV filter → LightGBM (AUC ~0.67 on full set)
+python scripts/full_process.py    # clean → IV filter → LightGBM (API smoke test only)
 ```
 
 Column reference: `src/lookalike/data/schema.py`.
