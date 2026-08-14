@@ -48,13 +48,22 @@ def test_catalog_feature_names_are_unique():
     assert len(names) == len(set(names))
 
 
-def test_eleven_product_holding_features_still_lack_a_source():
+def test_eleven_product_holding_features_are_confirmed_deliverable():
     unconfirmed = unconfirmed_source_features()
-    assert len(unconfirmed) == 11
-    assert "total_product_count" in unconfirmed
-    assert "casa_flag" in unconfirmed
-    # Everything else in the workbook does name a source.
-    assert "core_product_category_count" not in unconfirmed
+    assert unconfirmed == []
+    assert get_feature("total_product_count").source_status == "confirmed"
+    assert get_feature("casa_flag").source == "RPT_CST_PD_HLD_DLY"
+
+
+def test_cic_features_are_low_coverage_in_the_tail_and_leave_the_default_plan():
+    cic_names = [
+        spec.name for spec in CORE_FEATURES if spec.delivery == D_CIC
+    ]
+    assert len(cic_names) == 8
+    assert all(get_feature(name).tier_b_coverage == COVERAGE_LOW for name in cic_names)
+    tier_b = planned_features("tier_b_extended")
+    assert not set(cic_names) & set(tier_b)
+    assert len(tier_b) == 26
 
 
 def test_tier_b_plan_is_a_strict_subset_of_tier_a():
@@ -114,8 +123,10 @@ def test_coverage_matrix_and_delivery_summary_are_consistent():
     assert summary["features"].sum() == 99
     assert summary["tier_a_planned"].sum() == 99
     assert delivery_summary(include_optional=False)["tier_a_planned"].sum() == 69
-    unconfirmed_row = summary.loc[summary["delivery"] == "D3_product_holding_source_tbd"].iloc[0]
-    assert unconfirmed_row["source_confirmed"] == 0
+    product_row = summary.loc[summary["delivery"] == "D3_product_holding"].iloc[0]
+    assert product_row["source_confirmed"] == 11
+    cic_row = summary.loc[summary["delivery"] == "D6_cic_external"].iloc[0]
+    assert cic_row["tier_b_planned"] == 0
 
 
 def test_income_group_is_marked_low_coverage_for_the_tail():

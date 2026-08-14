@@ -99,8 +99,16 @@ def catalog_section() -> list[str]:
         f"- 核心特征 {len(core)}，可选现金流特征 {len(catalog) - len(core)}，合计 {len(catalog)}",
         f"- 类别型特征 {len(categorical_features(tier_a))}，"
         f"设了单调约束的特征 {sum(1 for value in monotone_constraints(tier_a) if value != 0)}",
-        f"- **数据源为空、需 MB 确认的特征 {len(unconfirmed_source_features())} 个**："
-        + ", ".join(f"`{name}`" for name in unconfirmed_source_features()),
+    ]
+    unconfirmed = unconfirmed_source_features()
+    if unconfirmed:
+        lines.append(
+            f"- **数据源为空、需确认的特征 {len(unconfirmed)} 个**："
+            + ", ".join(f"`{name}`" for name in unconfirmed)
+        )
+    else:
+        lines.append("- 11 个产品持有字段已确认可交付；CIC 在尾部覆盖低，不进默认尾部特征集")
+    lines += [
         "",
         "### A.1 交付依赖与分层计划特征数",
         "",

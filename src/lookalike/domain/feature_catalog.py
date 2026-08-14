@@ -23,7 +23,7 @@ import pandas as pd
 # Delivery workstreams (drive the phased feature rollout).
 D_MB_CONFIRMED = "D1_mb_confirmed"  # RPT_CST_PD_HLD_DLY / BPM snapshots, source confirmed
 D_CUSTOMER_MASTER = "D2_customer_master"
-D_PRODUCT_HOLDING = "D3_product_holding_source_tbd"
+D_PRODUCT_HOLDING = "D3_product_holding"
 D_INTERNAL_TXN = "D4_internal_assets_and_transactions"
 D_APP_EVENTS = "D5_app_events"
 D_CIC = "D6_cic_external"
@@ -128,27 +128,27 @@ CORE_FEATURES: tuple[FeatureSpec, ...] = (
           D_INTERNAL_TXN, COVERAGE_MEDIUM, DIM_AUM),
     _spec("avg_monthly_flow_6m", GROUP_B, "NUM", "Transaction Records", 4,
           D_INTERNAL_TXN, COVERAGE_MEDIUM, DIM_ACTIVITY, 1),
-    _spec("investment_product_flag", GROUP_B, "NUM", "", None,
+    _spec("investment_product_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_LOW, DIM_PRODUCT),
-    _spec("loan_flag", GROUP_B, "NUM", "", None,
+    _spec("loan_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_MEDIUM, DIM_PRODUCT),
-    _spec("casa_flag", GROUP_B, "NUM", "", None,
+    _spec("casa_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_MEDIUM, DIM_PRODUCT),
-    _spec("term_deposit_flag", GROUP_B, "NUM", "", None,
+    _spec("term_deposit_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_LOW, DIM_PRODUCT),
-    _spec("certificate_of_deposit_cds_flag", GROUP_B, "NUM", "", None,
+    _spec("certificate_of_deposit_cds_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_LOW, DIM_PRODUCT),
-    _spec("vietqr_customer_flag", GROUP_B, "NUM", "", None,
+    _spec("vietqr_customer_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_MEDIUM, DIM_PRODUCT),
-    _spec("vietqr_merchant_customer_flag", GROUP_B, "NUM", "", None,
+    _spec("vietqr_merchant_customer_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_LOW, DIM_PRODUCT),
-    _spec("mbal_insurance_policy_flag", GROUP_B, "NUM", "", None,
+    _spec("mbal_insurance_policy_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_LOW, DIM_PRODUCT),
-    _spec("credit_card_flag", GROUP_B, "NUM", "", None,
+    _spec("credit_card_flag", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_MEDIUM, DIM_PRODUCT),
-    _spec("total_product_count", GROUP_B, "NUM", "", None,
+    _spec("total_product_count", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_HIGH, DIM_PRODUCT, 1),
-    _spec("banking_service_count", GROUP_B, "NUM", "", None,
+    _spec("banking_service_count", GROUP_B, "NUM", "RPT_CST_PD_HLD_DLY", None,
           D_PRODUCT_HOLDING, COVERAGE_MEDIUM, DIM_PRODUCT, 1),
     _spec("total_product_balance", GROUP_B, "NUM", "Internal Product Holdings", 4,
           D_INTERNAL_TXN, COVERAGE_LOW, DIM_AUM, 1),
@@ -156,19 +156,20 @@ CORE_FEATURES: tuple[FeatureSpec, ...] = (
           D_INTERNAL_TXN, COVERAGE_LOW, DIM_PRODUCT),
     _spec("credit_card_user", GROUP_B, "BIN", "Internal Product Holdings", 2,
           D_INTERNAL_TXN, COVERAGE_LOW, DIM_PRODUCT),
-    # C. Credit Behaviour Depth (8) - CIC based, the only signal independent of the MB relationship.
+    # C. Credit Behaviour Depth (8) - CIC. Confirmed low coverage in the tail, so these
+    # stay in tier A but drop out of the default tier-B plan.
     _spec("total_credit_accounts", GROUP_C, "NUM", "CIC + Internal Credit", 3,
-          D_CIC, COVERAGE_MEDIUM),
-    _spec("credit_card_utilization", GROUP_C, "NUM", "CIC", 4, D_CIC, COVERAGE_MEDIUM),
+          D_CIC, COVERAGE_LOW),
+    _spec("credit_card_utilization", GROUP_C, "NUM", "CIC", 4, D_CIC, COVERAGE_LOW),
     _spec("max_overdue_days_12m", GROUP_C, "NUM", "CIC + Internal Credit", 4,
-          D_CIC, COVERAGE_MEDIUM, None, -1),
+          D_CIC, COVERAGE_LOW, None, -1),
     _spec("overdue_count_12m", GROUP_C, "NUM", "CIC + Internal Credit", 4,
-          D_CIC, COVERAGE_MEDIUM, None, -1),
-    _spec("inquiry_concentration", GROUP_C, "NUM", "CIC API", 3, D_CIC, COVERAGE_MEDIUM),
-    _spec("loan_inquiry_ratio_6m", GROUP_C, "NUM", "CIC API", 3, D_CIC, COVERAGE_MEDIUM),
+          D_CIC, COVERAGE_LOW, None, -1),
+    _spec("inquiry_concentration", GROUP_C, "NUM", "CIC API", 3, D_CIC, COVERAGE_LOW),
+    _spec("loan_inquiry_ratio_6m", GROUP_C, "NUM", "CIC API", 3, D_CIC, COVERAGE_LOW),
     _spec("other_bank_debt_to_income", GROUP_C, "NUM", "CIC + Income Data", 4,
-          D_CIC, COVERAGE_MEDIUM, None, -1),
-    _spec("cic_score_trend", GROUP_C, "CAT", "CIC API", 3, D_CIC, COVERAGE_MEDIUM),
+          D_CIC, COVERAGE_LOW, None, -1),
+    _spec("cic_score_trend", GROUP_C, "CAT", "CIC API", 3, D_CIC, COVERAGE_LOW),
     # D. Income & Financial Health (8) - needs salary/transaction history.
     _spec("income_cv_12m", GROUP_D, "NUM", "Transaction Records", 4,
           D_INTERNAL_TXN, COVERAGE_LOW, None, -1),

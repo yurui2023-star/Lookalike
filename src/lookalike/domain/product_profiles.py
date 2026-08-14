@@ -212,8 +212,9 @@ MORTGAGE_LOAN = ProductProfile(
         negative_ratio=15.0,
         seed_age_rule="18-60 at feature observation date, per product policy",
         notes=(
-            "Mortgage application-to-disbursement takes longer and drops ~30%, so the primary "
-            "label stays at application and a second-stage model estimates P(disbursed|applied)."
+            "Seed product is Home Easy Loan. Application-to-disbursement takes longer and "
+            "drops ~30%, so the primary label stays at application and a second-stage model "
+            "estimates P(disbursed|applied)."
         ),
     ),
     steps=(
@@ -259,6 +260,7 @@ MORTGAGE_LOAN = ProductProfile(
         "diagnosis_pool_rate_per_10k": 61.3,
         "diagnosis_overall_rate_per_10k": 11.70,
         "diagnosis_applicant_retention": 0.692,
+        "seed_product": "Home Easy Loan",
     },
 )
 

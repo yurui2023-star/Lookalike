@@ -8,7 +8,7 @@
 
 - 核心特征 69，可选现金流特征 30，合计 99
 - 类别型特征 8，设了单调约束的特征 28
-- **数据源为空、需 MB 确认的特征 11 个**：`investment_product_flag`, `loan_flag`, `casa_flag`, `term_deposit_flag`, `certificate_of_deposit_cds_flag`, `vietqr_customer_flag`, `vietqr_merchant_customer_flag`, `mbal_insurance_policy_flag`, `credit_card_flag`, `total_product_count`, `banking_service_count`
+- 11 个产品持有字段已确认可交付；CIC 在尾部覆盖低，不进默认尾部特征集
 
 ### A.1 交付依赖与分层计划特征数
 
@@ -16,10 +16,10 @@
 | --- | --- | --- | --- | --- |
 | D1_mb_confirmed | 11 | 11 | 11 | 6 |
 | D2_customer_master | 7 | 7 | 7 | 6 |
-| D3_product_holding_source_tbd | 11 | 0 | 11 | 6 |
+| D3_product_holding | 11 | 11 | 11 | 6 |
 | D4_internal_assets_and_transactions | 24 | 24 | 24 | 4 |
 | D5_app_events | 8 | 8 | 8 | 4 |
-| D6_cic_external | 8 | 8 | 8 | 8 |
+| D6_cic_external | 8 | 8 | 8 | 0 |
 | D7_transaction_detail_optional | 30 | 30 | 30 | 0 |
 
 ### A.2 Tier B 预期覆盖矩阵（按特征组）
@@ -29,7 +29,7 @@
 | A. Demographics | 5 | 0 | 1 | 6 | 5 |
 | B. Banking Relationship Depth | 2 | 8 | 8 | 18 | 10 |
 | B. Banking Relationship Depth - MB Additions | 1 | 2 | 2 | 5 | 3 |
-| C. Credit Behaviour Depth | 0 | 8 | 0 | 8 | 8 |
+| C. Credit Behaviour Depth | 0 | 0 | 8 | 8 | 0 |
 | C. Credit Behaviour Depth - MB Additions | 1 | 1 | 0 | 2 | 2 |
 | D. Income & Financial Health | 0 | 0 | 8 | 8 | 0 |
 | E. Transaction Behaviour Patterns | 0 | 1 | 7 | 8 | 1 |
@@ -40,12 +40,12 @@
 
 ### A.3 分层特征集规模
 
-| 模型 | 全量交付后 | V1（仅 MB 已确认源 + 主数据 + 产品持有） | CIC 缺失时 |
+| 模型 | 全量交付后 | V1（仅 MB 已确认源 + 主数据 + 产品持有） | 默认尾部（无 CIC） |
 | --- | --- | --- | --- |
 | tier_a_core | 69 | 29 | 61 |
-| tier_b_extended | 34 | 18 | 26 |
+| tier_b_extended | 26 | 18 | 26 |
 
-Tier B 相比 Tier A 少 35 个特征，删的全部是在单产品/休眠客群里预期覆盖过低的交易、消费、App 深度类字段。
+Tier B 默认 26 个特征（不含 CIC）。删的是交易/消费/App 深度、收入、以及尾部覆盖不足的 CIC。
 
 ## B. 分层特征筛选（在各层内部分别计算缺失率 / 单值率 / IV）
 
