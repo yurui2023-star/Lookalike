@@ -1,4 +1,4 @@
-.PHONY: install data lint test run eda pipeline scoring-domain
+.PHONY: install data lint test run eda pipeline scoring-domain tier-plan
 
 install:
 	python3 -m venv .venv
@@ -26,3 +26,8 @@ scoring-domain:
 	.venv/bin/python scripts/scoring_domain_experiment.py \
 		--base-rows 2000000 \
 		--evidence docs/evidence/scoring_domain_experiment.md
+
+tier-plan:
+	.venv/bin/python scripts/tier_model_plan.py \
+		--base-rows 2000000 \
+		--evidence docs/evidence/tier_model_plan.md
