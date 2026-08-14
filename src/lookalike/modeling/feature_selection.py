@@ -79,9 +79,10 @@ def smoothed_iv(
 ) -> float:
     """Information Value with Laplace-smoothed bin counts.
 
-    The unsmoothed formula divides by an empty-positive bin, which is the normal case in a
-    tier where positives are 2.5 per 10,000. Smoothing keeps the statistic finite and
-    comparable across tiers of very different prevalence.
+    The unsmoothed formula divides by an empty-positive bin. That is the normal case in a
+    rare-event tier (a handful of positives per 10,000 rows): WOE hits ±∞ or a 1e-10
+    epsilon, and IV is no longer a measure of signal. Smoothing keeps the statistic finite
+    and comparable across tiers of very different prevalence.
     """
     subset = frame[[feature, label_col]].dropna(subset=[feature])
     if subset.empty:

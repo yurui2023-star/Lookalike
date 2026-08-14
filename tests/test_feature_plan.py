@@ -22,6 +22,7 @@ from lookalike.domain.feature_catalog import (
     planned_features,
     unconfirmed_source_features,
 )
+from lookalike.features.iv import calculate_iv_categorical
 from lookalike.modeling.feature_selection import (
     compare_tiers,
     feature_profile,
@@ -158,6 +159,48 @@ def test_smoothed_iv_stays_finite_when_a_bin_has_no_positives():
     value = smoothed_iv(frame, "x", "label")
     assert np.isfinite(value)
     assert 0 < value < 20
+
+
+def test_empty_positive_bins_inflate_unsmoothed_iv():
+    """Hand-checkable illustration of the empty-bin trap; not MB production data.
+
+    10,000 rows, 3 positives (3 per 10k, same order as the 2.5/10k planning prior),
+    four equal category bins, all three positives in bin A. The unsmoothed WOE in
+    B/C/D uses a 1e-10 epsilon in place of ln(0) and each empty bin contributes
+    ~5.4 of IV, so the total is ~17. Laplace smoothing (α=0.5) brings it under 1.
+    """
+    frame = pd.DataFrame(
+        {
+            "x": ["A"] * 2500 + ["B"] * 2500 + ["C"] * 2500 + ["D"] * 2500,
+            "label": [1, 1, 1] + [0] * 9997,
+        }
+    )
+    _, unsmoothed = calculate_iv_categorical(frame, "x", "label")
+    smoothed = smoothed_iv(frame, "x", "label")
+    assert unsmoothed == pytest.approx(17.275, abs=0.01)
+    assert np.isfinite(smoothed)
+    assert smoothed < 1.0
+
+
+def test_noise_iv_exceeds_brd_threshold_with_a_few_hundred_positives():
+    """Synthetic frame: 1,197 rows / 234 positives / N(0,1) noise, seed 14.
+
+    This is the number that was previously quoted in the spec as if it came from
+    a 2.5/10k tail. It is a unit-test fixture. A pure-noise feature still clears
+    IV≥0.02, which is why scarce tiers must not drop on IV.
+    """
+    rng = np.random.default_rng(14)
+    n, n_pos = 1197, 234
+    label = np.zeros(n, dtype=int)
+    label[:n_pos] = 1
+    rng.shuffle(label)
+    frame = pd.DataFrame({"noise": rng.normal(size=n), "label": label})
+    assert smoothed_iv(frame, "noise", "label") == pytest.approx(0.0384, abs=0.0005)
+    plan = screen_features(
+        frame, ["noise"], "label", min_positives_for_iv=500
+    ).set_index("feature")
+    assert plan.loc["noise", "decision"] == "keep"
+    assert not bool(plan.loc["noise", "iv_reliable"])
 
 
 def test_smoothed_iv_is_zero_without_variation():

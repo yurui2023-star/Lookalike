@@ -36,7 +36,12 @@ DIAGNOSIS = {
     "base_customers": 35_720_000,
     "pool_customers": 4_720_000,
     "pool_rate_per_10k": 143.1,
-    "tail_rate_per_10k": 2.5,  # 7,723 applicants outside the pool over ~31M customers
+    # Derived from diagnosis headcounts, not measured on CIF-level data:
+    #   total applicants = 69,130 / 0.90 = 76,811
+    #   outside pool     = 76,811 - 69,130 = 7,681
+    #   tail population  = 35.72M - 4.72M = 31.00M
+    #   7,681 / 31,000,000 × 10,000 ≈ 2.48 → round to 2.5 per 10k (planning prior)
+    "tail_rate_per_10k": 2.5,
 }
 
 
