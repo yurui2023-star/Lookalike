@@ -72,10 +72,12 @@ make lint
 
 Headless monthly batch scoring: no frontend, no file upload, no Segment scoring. Pre-production trains and publishes models; production scores the Smart Sales candidate snapshot and writes results to Sales CDP ClickHouse.
 
-| Language | File |
+| Format | File |
 |----------|------|
-| 中文 | [`docs/Lookalike_Detailed_Design_v4.0_BatchScoring.html`](docs/Lookalike_Detailed_Design_v4.0_BatchScoring.html) |
-| English | [`docs/Lookalike_Detailed_Design_v4.0_BatchScoring_EN.html`](docs/Lookalike_Detailed_Design_v4.0_BatchScoring_EN.html) |
+| 中文 HTML | [`docs/Lookalike_Detailed_Design_v4.0_BatchScoring.html`](docs/Lookalike_Detailed_Design_v4.0_BatchScoring.html) |
+| 中文 Markdown | [`docs/Lookalike_Detailed_Design_v4.0_BatchScoring.md`](docs/Lookalike_Detailed_Design_v4.0_BatchScoring.md) |
+| 中文 Word | [`docs/Lookalike_Detailed_Design_v4.0_BatchScoring.docx`](docs/Lookalike_Detailed_Design_v4.0_BatchScoring.docx) |
+| English HTML | [`docs/Lookalike_Detailed_Design_v4.0_BatchScoring_EN.html`](docs/Lookalike_Detailed_Design_v4.0_BatchScoring_EN.html) |
 
 Aligned with **MB Bank System Architecture Document_Lookalike V1.0**. Summary of the v2.1 → v4.0 change: [`docs/DESIGN_OPTIMIZATION.md`](docs/DESIGN_OPTIMIZATION.md).
 

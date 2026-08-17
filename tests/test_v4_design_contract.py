@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ZH = ROOT / "docs" / "Lookalike_Detailed_Design_v4.0_BatchScoring.html"
 EN = ROOT / "docs" / "Lookalike_Detailed_Design_v4.0_BatchScoring_EN.html"
+MD = ROOT / "docs" / "Lookalike_Detailed_Design_v4.0_BatchScoring.md"
+DOCX = ROOT / "docs" / "Lookalike_Detailed_Design_v4.0_BatchScoring.docx"
 
 CDP_FIELDS = [
     "Lookalike Model ID x Profile ID",
@@ -39,6 +41,18 @@ RETIRED_MUST_APPEAR = [
 def test_v4_design_docs_exist() -> None:
     assert ZH.is_file(), f"missing {ZH}"
     assert EN.is_file(), f"missing {EN}"
+    assert MD.is_file(), f"missing {MD}"
+    assert DOCX.is_file(), f"missing {DOCX}"
+    assert DOCX.stat().st_size > 10_000
+
+
+def test_v4_markdown_covers_cdp_contract() -> None:
+    text = MD.read_text(encoding="utf-8")
+    for field in CDP_FIELDS:
+        assert field in text, f"MD missing CDP field: {field}"
+    assert "{run_batch_id}x{profile_id}" in text
+    assert "## 8. Sales CDP 结果 schema 与写入" in text
+    assert "取消 Lookalike 前端" in text
 
 
 def test_v4_zh_covers_sad_and_cdp_contract() -> None:
