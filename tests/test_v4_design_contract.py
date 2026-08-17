@@ -51,8 +51,10 @@ def test_v4_markdown_covers_cdp_contract() -> None:
     for field in CDP_FIELDS:
         assert field in text, f"MD missing CDP field: {field}"
     assert "{run_batch_id}x{profile_id}" in text
-    assert "## 8. Sales CDP 结果 schema 与写入" in text
-    assert "取消 Lookalike 前端" in text
+    assert "## 7. Sales CDP 结果 schema 与写入" in text
+    assert "相对 v2.1" not in text
+    assert "优化清单" not in text
+    assert "退役" not in text
 
 
 def test_v4_zh_covers_sad_and_cdp_contract() -> None:
