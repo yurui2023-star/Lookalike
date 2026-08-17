@@ -2,7 +2,9 @@
 
 ### Product overview
 
-**Lookalike Audience & Lead Generation API** (Design v2.1 MVP + P1-lite): EDA, IV filtering, LightGBM training, Feature Adapter + leakage denylist, process versions with async generate. See `docs/Lookalike_Detailed_Design_v2.1_Optimized.html`.
+**Lookalike monthly batch scoring** (Design v4.0 target): no frontend; pre-production trains/publishes models; production scores the Smart Sales candidate snapshot monthly and writes scores to Sales CDP ClickHouse. See `docs/Lookalike_Detailed_Design_v4.0_BatchScoring.html`.
+
+The **running code** is still v2.1 MVP+P1-lite (EDA, train, process/upload/generate). Do not treat upload/Segment/React as the production contract. Reuse Adapter + leakage denylist + LightGBM predict.
 
 ### Services
 
@@ -52,4 +54,5 @@ Async generate uses FastAPI `BackgroundTasks` (Celery reserved for later scale-o
 - Feature Adapter strips denylist fields (e.g. `ResponsePropensity`, `ClientID`); hard-fails if they remain.
 - Similarity threshold is a **post-scoring filter** only (not a create-process input).
 - Process/version metadata survives API restart via `data/store/` (gitignored).
-- Full React frontend / CDP / Recurring / Conversion are **P2** — out of current scope.
+- v4.0 retires file upload, Segment scoring, and the Lookalike frontend. CDP ClickHouse write is the production result path (not a P2 extra).
+- Current process/upload/generate APIs remain in the repo until the Run API landing in v4.0 §15.

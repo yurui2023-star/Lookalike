@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookalike 月度批处理打分服务 — 详细设计说明书 v4.0</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:#fff; --bg2:#f7f8fa; --bg3:#f0f1f3; --text:#1a1a2e; --muted:#6b7280;
+    --border:#e5e7eb; --strong:#d1d5db; --accent:#0f6e56; --accent-bg:#e1f5ee;
+    --blue:#185fa5; --blue-bg:#e6f1fb; --amber:#854f0b; --amber-bg:#faeeda;
+    --red:#a32d2d; --red-bg:#fcebeb; --coral:#d85a30; --r:8px; --rl:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',Arial,sans-serif;background:var(--bg3);color:var(--text);line-height:1.7;font-size:14px}
+  .container{max-width:1100px;margin:0 auto;padding:24px}
+  .doc-header{background:linear-gradient(135deg,#0f6e56,#0b5442);color:#fff;padding:40px 32px;border-radius:var(--rl);margin-bottom:24px}
+  .doc-header h1{font-size:26px;font-weight:600;margin-bottom:8px}
+  .doc-header .subtitle{opacity:.9;margin-bottom:18px}
+  .doc-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px}
+  .doc-meta .label{opacity:.65;display:block}
+  .toc,section{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:28px 32px;margin-bottom:18px}
+  .toc h2,section>h2{font-size:20px;border-bottom:2px solid var(--accent);padding-bottom:8px;margin-bottom:16px}
+  h3{font-size:16px;margin:18px 0 10px}
+  h4{font-size:14px;margin:12px 0 8px}
+  p,li{margin-bottom:8px}
+  ul,ol{padding-left:22px;margin-bottom:12px}
+  a{color:var(--accent)}
+  code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--coral)}
+  pre{background:#1e2430;color:#e8eaed;padding:14px;border-radius:var(--r);overflow-x:auto;margin-bottom:14px;font-size:12px;line-height:1.5}
+  pre code{background:none;color:inherit;padding:0}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+  th{background:var(--bg2);text-align:left;padding:9px 10px;border-bottom:2px solid var(--strong);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .badge-keep{background:var(--accent-bg);color:var(--accent)}
+  .badge-drop{background:var(--red-bg);color:var(--red)}
+  .badge-new{background:var(--blue-bg);color:var(--blue)}
+  .badge-tbc{background:var(--amber-bg);color:var(--amber)}
+  .callout{border-left:4px solid;padding:12px 14px;margin-bottom:14px;border-radius:0 var(--r) var(--r) 0;font-size:13px}
+  .callout-info{border-color:var(--blue);background:var(--blue-bg)}
+  .callout-warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout-ok{border-color:var(--accent);background:var(--accent-bg)}
+  .callout-danger{border-color:var(--red);background:var(--red-bg)}
+  .mermaid{text-align:center;margin:12px 0 16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+  .card-title{font-weight:600;margin-bottom:6px}
+  .stat-row{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0}
+  .stat .num{font-size:22px;font-weight:700;color:var(--accent)}
+  .stat .label{font-size:12px;color:var(--muted)}
+  .footer{text-align:center;color:var(--muted);margin:20px 0 40px;font-size:12px}
+  .strike{text-decoration:line-through;color:var(--muted)}
+  @media(max-width:800px){.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="doc-header">
+  <h1>Lookalike 月度批处理打分服务 — 详细设计说明书 v4.0</h1>
+  <div class="subtitle">无前端 · 预生产训练 / 生产仅推理 · 月度候选池全量打分 · 结果写入 Sales CDP ClickHouse</div>
+  <div class="doc-meta">
+    <div><span class="label">版本</span><strong>4.0</strong></div>
+    <div><span class="label">日期</span><strong>2026-08-17</strong></div>
+    <div><span class="label">对齐 SAD</span><strong>MB Bank Lookalike V1.0</strong></div>
+    <div><span class="label">产品范围</span><strong>白领贷 / 房屋易贷</strong></div>
+    <div><span class="label">状态</span><strong>草案 · 待架构与干系人评审</strong></div>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#ch1">1. 文档概述与客户变更</a></li>
+    <li><a href="#ch2">2. 相对 v2.1 / v4 草案的优化清单</a></li>
+    <li><a href="#ch3">3. 系统边界与确认架构决策</a></li>
+    <li><a href="#ch4">4. 逻辑架构与模块职责</a></li>
+    <li><a href="#ch5">5. 月度批处理主流程</a></li>
+    <li><a href="#ch6">6. 调度平台任务 API</a></li>
+    <li><a href="#ch7">7. 推理运行时（Worker / 分片 / 幂等）</a></li>
+    <li><a href="#ch8">8. Sales CDP 结果 schema 与写入</a></li>
+    <li><a href="#ch9">9. 数据模型</a></li>
+    <li><a href="#ch10">10. 模型产物加载与预生产训练边界</a></li>
+    <li><a href="#ch11">11. 特征对齐、泄漏防护与冷启动</a></li>
+    <li><a href="#ch12">12. 安全、审计与隐私</a></li>
+    <li><a href="#ch13">13. 非功能、容量与可观测性</a></li>
+    <li><a href="#ch14">14. 测试设计</a></li>
+    <li><a href="#ch15">15. 仓库落地映射与废弃能力</a></li>
+    <li><a href="#ch16">16. 待确认项、风险与演进</a></li>
+  </ol>
+</div>
+
+<section id="ch1">
+  <h2>1. 文档概述与客户变更</h2>
+  <div class="callout callout-ok">本文档是 <strong>SAD V1.0</strong> 的实现级详细设计（SAD REF-05）。客户已确认：<strong>取消 Lookalike 前端</strong>；模型在预生产建好并发布后，<strong>每月定时对当月合格候选客群做全量打分</strong>；打分结果按附件 schema <strong>同步到 Sales CDP</strong>。此前的<strong>文件上传</strong>与<strong>基于 Segment 打分</strong>不再需要。</div>
+
+  <h3>1.1 目的</h3>
+  <p>给出生产 Lookalike 作为<strong>无前端的月度批处理推理服务</strong>的实现依据：任务接入、候选/特征读取、已发布模型加载、全量推理、幂等写入 CDP、状态与审计。训练、EDA、IV 筛选、审批发布属于预生产，不进入生产运行时。</p>
+
+  <h3>1.2 「全量打分」口径（客户用语对齐）</h3>
+  <div class="callout callout-warn">客户所说「每月对全量客户打分」在本设计中定义为：对 <strong>Smart Sales 按产品资格、活跃、黑名单与合规规则圈选并冻结的当月候选快照中的全部有效客户</strong>打分，推理过程<strong>不设阈值、不做 Top-K 截断</strong>。筛选、分层、名单生成由 Smart Sales 在读取 CDP 分数后完成。这<strong>不是</strong>对全行客户主数据（SAD 参考约 3572 万）打分。</div>
+
+  <h3>1.3 术语</h3>
+  <table>
+    <tr><th>术语</th><th>含义</th></tr>
+    <tr><td>候选池 / Candidate Snapshot</td><td>Smart Sales 按产品资格生成的冻结客户集合；生产推理的唯一打分总体</td></tr>
+    <tr><td>特征快照 / Feature Snapshot</td><td>与已发布模型 schema 对齐、以 T0 为截止的客户特征集</td></tr>
+    <tr><td>批处理运行 / Scoring Run</td><td>某产品 + 某评分月 + 某候选快照 + 某模型版本的一次受控推理</td></tr>
+    <tr><td>run_batch_id</td><td>Lookalike process ID；一次运行的唯一标识，对应 CDP 复合键左侧</td></tr>
+    <tr><td>Profile ID</td><td>CDP 客户档案主键；逻辑上对应 <code>customer_id</code>，与 HostCif / personal_cif 的物理映射待确认</td></tr>
+    <tr><td>Lookalike score</td><td>正类概率 <code>similarity_score</code>，区间 [0, 1]</td></tr>
+    <tr><td>Sales CDP</td><td>分数落库与治理归属；物理存储为 CDP 所属 ClickHouse</td></tr>
+    <tr><td>Seed</td><td>仅预生产训练正样本；生产不接收种子上传，不圈选种子</td></tr>
+  </table>
+
+  <h3>1.4 参考</h3>
+  <table>
+    <tr><th>文件</th><th>角色</th></tr>
+    <tr><td>MB Bank System Architecture Document_Lookalike V1.0</td><td>系统边界、逻辑/数据/集成架构、容量与 NFR 的 Source of Truth</td></tr>
+    <tr><td>Sales CDP 字段表（客户附件）</td><td>写入 CDP 的业务字段：复合键、Profile ID、分数、模型 ID/名称、product ID</td></tr>
+    <tr><td>BRD v2.4 / BAD v3.2</td><td>业务目标、双产品、评估与验收</td></tr>
+    <tr><td>Capacity Planning v2.3</td><td>单产品 3.0M / 4.5M / 6.0M、约 50 特征、4 小时窗口的性能测试基线</td></tr>
+    <tr><td>本仓库 <code>src/lookalike/</code></td><td>可复用：LightGBM 推理、Feature Adapter、泄漏 denylist、缺失/截断预处理</td></tr>
+    <tr><td>v2.1 详细设计 / DESIGN_PLAN.md</td><td>历史方案；被本文档在生产边界上取代</td></tr>
+  </table>
+</section>
+
+<section id="ch2">
+  <h2>2. 相对 v2.1 / v4 草案的优化清单</h2>
+  <p>v2.1 仍按「交互式 Process + 上传/Segment + 前端 Dashboard」设计。客户讨论后的 v4 草案已改为批处理，但与 SAD 仍有多处冲突。本版按 SAD 校正，并固化 CDP 附件 schema。</p>
+
+  <h3>2.1 明确取消的能力</h3>
+  <table>
+    <tr><th>原能力（v2.1 / 当前仓库）</th><th>处置</th><th>原因</th></tr>
+    <tr><td>React / 业务前端 8 屏</td><td><span class="badge badge-drop">取消</span></td><td>客户确认取消 Lookalike 前端；SAD AD-01</td></tr>
+    <tr><td>种子/候选 CSV 上传</td><td><span class="badge badge-drop">取消</span></td><td>生产不接收用户文件；候选由 Smart Sales 快照提供</td></tr>
+    <tr><td>基于 Segment 打分</td><td><span class="badge badge-drop">取消</span></td><td>客户确认不再需要；资格圈选上收 Smart Sales</td></tr>
+    <tr><td>Create Process / Generate / Version Dashboard</td><td><span class="badge badge-drop">取消</span></td><td>无业务用户会话；运行由调度平台发起</td></tr>
+    <tr><td>阈值 / Top-K / 导出拆分</td><td><span class="badge badge-drop">移出 Lookalike</span></td><td>筛选与名单在 Smart Sales；Lookalike 只产出全量分数</td></tr>
+    <tr><td>Lookalike 直连 CRM</td><td><span class="badge badge-drop">取消</span></td><td>SAD AD-08：Smart Sales 选客后送 CRM</td></tr>
+    <tr><td>生产环境训练 / 自动抽种子 / 自动重训切流</td><td><span class="badge badge-drop">取消</span></td><td>SAD AD-03：生产只加载已审批发布模型</td></tr>
+  </table>
+
+  <h3>2.2 相对 v4 草案的架构校正</h3>
+  <table>
+    <tr><th>#</th><th>v4 草案问题</th><th>本版优化</th></tr>
+    <tr><td>1</td><td>对特征表「全部客户」打分（示例 5000 万）</td><td>只打 Smart Sales 当月候选快照；容量基线 3.0M–6.0M / 产品</td></tr>
+    <tr><td>2</td><td>进程内 APScheduler 作为主调度</td><td>调度平台月度触发；Lookalike 提供任务接入与状态查询</td></tr>
+    <tr><td>3</td><td>生产内 PSI&gt;0.25 自动重训并 Canary</td><td>PSI 只监控告警；重训/发布走模型治理，生产不训练</td></tr>
+    <tr><td>4</td><td>CDP 默认同步 REST / SFTP / Kafka</td><td>主路径：幂等写入 CDP ClickHouse；发布后再供 Smart Sales 消费</td></tr>
+    <tr><td>5</td><td>CDP 字段缺复合主键</td><td>按附件增加 <code>Lookalike Model ID x Profile ID</code> = process ID 拼接 Profile ID</td></tr>
+    <tr><td>6</td><td>JWT 业务用户 + 结果查询/Dashboard API</td><td>系统间身份；仅任务、状态、健康检查、受控重跑</td></tr>
+    <tr><td>7</td><td>API 进程内 ThreadPool 打分</td><td>任务服务与 Scoring Worker 分离；按产品/分片水平扩展</td></tr>
+    <tr><td>8</td><td>产品代码 SFU 与 SAD 不一致</td><td>白领贷 White-Collar Loan、房屋易贷 Home Easy Loan；<code>product_code</code> 待确认</td></tr>
+    <tr><td>9</td><td>目录仍含 <code>result.py</code> / <code>dashboard.py</code> / 导出 CSV</td><td>生产镜像不包含业务查询 UI 与文件导出</td></tr>
+    <tr><td>10</td><td>生产抽种子 SQL / 规则编译器入模泄漏</td><td>种子仅预生产；沿用仓库 <code>leakage.py</code> 硬失败，不把圈选列当特征</td></tr>
+  </table>
+
+  <h3>2.3 仍保留并复用的仓库能力</h3>
+  <div class="stat-row">
+    <div class="stat"><div class="num">LightGBM</div><div class="label">生产推理主模型</div></div>
+    <div class="stat"><div class="num">Adapter</div><div class="label">特征 schema 对齐</div></div>
+    <div class="stat"><div class="num">denylist</div><div class="label">泄漏字段硬失败</div></div>
+    <div class="stat"><div class="num">IV / P99</div><div class="label">仅预生产冻结进产物</div></div>
+  </div>
+</section>
+
+<section id="ch3">
+  <h2>3. 系统边界与确认架构决策</h2>
+  <h3>3.1 定位</h3>
+  <p>Lookalike 从 Smart Sales 内嵌模块独立为<strong>后端批处理推理服务</strong>。它不拥有客户、产品、候选池或 CRM 主数据；分数仅用于营销排序，<strong>不替代</strong>资格判定、反欺诈、授信审批、定价、押品估值或放款决策。</p>
+
+  <h3>3.2 已确认决策（摘自 SAD）</h3>
+  <table>
+    <tr><th>ID</th><th>决策</th></tr>
+    <tr><td>AD-01</td><td>无前端的后端批处理服务，与 Smart Sales 分离</td></tr>
+    <tr><td>AD-02</td><td>一期仅白领贷、房屋易贷，模型独立，不做跨产品融合模型</td></tr>
+    <tr><td>AD-03</td><td>银行提供种子；训练/验证/发布在预生产完成；生产只推理</td></tr>
+    <tr><td>AD-04</td><td>Smart Sales 计算并提供符合资格的候选池</td></tr>
+    <tr><td>AD-05</td><td>调度平台按月发起产品级批处理</td></tr>
+    <tr><td>AD-06</td><td>对全部有效候选打分，推理阶段无阈值 / Top-K</td></tr>
+    <tr><td>AD-07</td><td>完整结果写入 CDP ClickHouse，按评分月与 run batch 隔离</td></tr>
+    <tr><td>AD-08</td><td>Smart Sales 选客后送 CRM；Lookalike 不调用 CRM</td></tr>
+    <tr><td>AD-09</td><td>CRM 承载 RM 跟进；反馈字段与 KPI 归因待确认</td></tr>
+  </table>
+
+  <h3>3.3 端到端业务闭环（Lookalike 只负责 3–6）</h3>
+  <div class="mermaid">
+flowchart LR
+  SS[Smart Sales<br/>圈选候选快照] --> SCH[调度平台<br/>月度触发]
+  SCH --> LA[Lookalike<br/>校验/加载/全量推理]
+  FEAT[特征快照<br/>数据域] --> LA
+  REG[已发布模型<br/>Registry] --> LA
+  LA --> CDP[CDP ClickHouse<br/>客户级分数]
+  CDP --> SS2[Smart Sales<br/>筛选分层选客]
+  SS2 --> CRM[CRM<br/>RM 跟进]
+  </div>
+</section>
+
+<section id="ch4">
+  <h2>4. 逻辑架构与模块职责</h2>
+  <div class="mermaid">
+flowchart TB
+  subgraph External[外部编排与消费]
+    SCH[调度平台]
+    SS[Smart Sales]
+  end
+  subgraph Access[接入层]
+    API[Batch Task API]
+  end
+  subgraph Control[任务控制层]
+    ORCH[Run Orchestrator]
+    IDEM[Idempotency and Checkpoint]
+    META[(Task Metadata Store)]
+  end
+  subgraph Runtime[模型运行时]
+    RES[Model Resolver]
+    ASM[Scoring Input Assembler]
+    WCL[WCL Scoring Worker]
+    HEL[HEL Scoring Worker]
+    OUT[Complete Output Control]
+  end
+  subgraph Adapter[数据适配层]
+    CR[Candidate Snapshot Reader]
+    FR[Feature Snapshot Reader]
+    WR[Score Result Writer]
+  end
+  SCH --> API
+  API --> ORCH
+  ORCH --> IDEM
+  ORCH --> META
+  ORCH --> RES
+  RES --> ASM
+  ASM --> WCL
+  ASM --> HEL
+  WCL --> OUT
+  HEL --> OUT
+  CR --> ASM
+  FR --> ASM
+  OUT --> WR
+  WR --> CH[(CDP ClickHouse)]
+  SS -.-> CR
+  SS -.-> CH
+  </div>
+
+  <h3>4.1 生产部署单元</h3>
+  <table>
+    <tr><th>单元</th><th>职责</th><th>技术基线</th></tr>
+    <tr><td>Batch Task Service</td><td>任务接入、校验、状态、受控取消/重跑；无 UI</td><td>Python 3.12 + FastAPI + Uvicorn</td></tr>
+    <tr><td>Scoring Worker</td><td>特征变换、模型加载、分片推理、checkpoint</td><td>同运行时；按产品隔离；4 vCPU / 16 GiB 为性能测试单元</td></tr>
+    <tr><td>Task Metadata Store</td><td>运行状态、幂等键、checkpoint、重试关系</td><td>技术组件待确认；禁止仅存进程内存</td></tr>
+    <tr><td>Model Cache</td><td>已发布产物只读缓存</td><td>按产品+版本隔离；checksum 校验</td></tr>
+    <tr><td>CDP ClickHouse</td><td>客户级分数存储与查询</td><td>CDP 负责集群、权限、分区、TTL</td></tr>
+  </table>
+
+  <h3>4.2 生产镜像禁止项</h3>
+  <p>生产镜像只包含任务接入、批推理、数据访问与可观测性依赖。matplotlib / seaborn / SHAP / Optuna / 训练与报表依赖默认留在预生产。不打包前端工程、文件上传处理、Segment 解析、业务 Dashboard。</p>
+
+  <h3>4.3 依赖方向</h3>
+  <pre><code>api/          → orchestrator, auth, schemas
+orchestrator/ → metadata, workers, adapters
+workers/      → model_runtime, feature_align, leakage_validate
+adapters/     → candidate reader, feature reader, cdp writer
+model_runtime → artifact repo (read-only)
+禁止反向依赖。生产代码路径不得 import 训练 / EDA / 上传模块。</code></pre>
+</section>
+
+<section id="ch5">
+  <h2>5. 月度批处理主流程</h2>
+  <div class="mermaid">
+sequenceDiagram
+  participant SS as Smart Sales
+  participant SCH as 调度平台
+  participant LA as Lookalike
+  participant REG as Model Registry
+  participant DP as 特征/候选交接区
+  participant CDP as CDP ClickHouse
+  SS->>DP: 发布当月候选快照 + 完成标志
+  SCH->>LA: POST /runs (month, product, snapshots, model)
+  LA->>LA: 校验幂等、产品、快照、已发布模型
+  LA->>REG: 加载产物 + checksum + feature schema
+  LA->>DP: 分片读取候选 ∩ 特征快照
+  LA->>LA: 全量推理（无阈值 / 无 Top-K）
+  LA->>CDP: 幂等写入客户级分数（未发布）
+  LA->>CDP: 出入库对账通过后标记 published
+  LA->>SCH: SUCCEEDED + 计数/重试摘要
+  SS->>CDP: 仅读取 published 批次并选客
+  SS->>SS: 送 CRM（不经过 Lookalike）
+  </div>
+
+  <h3>5.1 步骤与责任</h3>
+  <table>
+    <tr><th>步</th><th>责任方</th><th>处理</th><th>输出</th></tr>
+    <tr><td>1</td><td>Smart Sales</td><td>按白领贷/房屋易贷资格、活跃、排除名单、合规规则圈选</td><td>产品级候选快照</td></tr>
+    <tr><td>2</td><td>调度平台</td><td>校验上游依赖并发起产品级运行</td><td>run_batch_id、评分月、产品、快照引用</td></tr>
+    <tr><td>3</td><td>Lookalike</td><td>校验请求、幂等键、快照、已发布模型</td><td>可执行运行记录</td></tr>
+    <tr><td>4</td><td>Lookalike / 数据提供方</td><td>分批读取有效候选及模型所需特征</td><td>对齐后的打分输入</td></tr>
+    <tr><td>5</td><td>Lookalike</td><td>加载对应产品已发布模型，对全部有效候选推理</td><td>客户级完整分数</td></tr>
+    <tr><td>6</td><td>Lookalike / CDP</td><td>写入分数与追溯字段；对账后发布</td><td>按月/批次隔离的 CDP 表</td></tr>
+    <tr><td>7–8</td><td>Smart Sales / CRM</td><td>读分、选客、送名单、RM 跟进</td><td>目标名单与跟进记录</td></tr>
+  </table>
+
+  <h3>5.2 运行状态机</h3>
+  <p>状态至少包括：<code>PENDING</code> → <code>VALIDATING</code> → <code>RUNNING</code> → <code>SUCCEEDED</code> / <code>FAILED</code>；瞬态错误进入 <code>RETRYING</code>（最多 3 次）；外部取消进入 <code>CANCELLED</code>。写 ClickHouse 期间内部细分为 <code>WRITING</code>（未发布）与对账成功后的 <code>PUBLISHED</code>（对调度平台仍映射为 <code>SUCCEEDED</code>）。</p>
+  <ul>
+    <li>同一业务幂等键不得产生不受控的重复运行。</li>
+    <li>受控重跑必须使用<strong>新</strong> <code>run_batch_id</code>，并关联原批次；不得覆盖已发布历史。</li>
+    <li>对账失败不得将批次标记为可被 Smart Sales 消费。</li>
+    <li>进程重启后根据 checkpoint 从已提交分片续跑，或安全失败等待受控重跑。</li>
+  </ul>
+</section>
+
+<section id="ch6">
+  <h2>6. 调度平台任务 API</h2>
+  <div class="callout callout-info">Lookalike <strong>没有</strong>业务用户 API。以下接口仅供调度平台与运维身份调用。协议、认证、时区、回调方式待确认（SAD P-01），下列为详细设计建议契约。</div>
+
+  <h3>6.1 约定</h3>
+  <table>
+    <tr><th>项</th><th>约定</th></tr>
+    <tr><td>Base path</td><td><code>/api/v1/lookalike</code></td></tr>
+    <tr><td>认证</td><td>系统间身份（mTLS / 平台颁发的服务凭证）；不提供页面登录</td></tr>
+    <tr><td>字段</td><td>JSON camelCase；元数据存储 snake_case</td></tr>
+    <tr><td>幂等</td><td>请求头 <code>Idempotency-Key</code> 或 body <code>idempotencyKey</code></td></tr>
+    <tr><td>追踪</td><td>每个请求必须带 <code>traceId</code></td></tr>
+  </table>
+
+  <h3>6.2 端点清单</h3>
+  <table>
+    <tr><th>#</th><th>方法</th><th>路径</th><th>功能</th></tr>
+    <tr><td>1</td><td>GET</td><td><code>/health</code></td><td>存活/就绪（含元数据存储与 ClickHouse 探活摘要）</td></tr>
+    <tr><td>2</td><td>POST</td><td><code>/api/v1/lookalike/runs</code></td><td>创建月度产品级打分运行</td></tr>
+    <tr><td>3</td><td>GET</td><td><code>/api/v1/lookalike/runs/{runBatchId}</code></td><td>查询状态、计数、错误、重试</td></tr>
+    <tr><td>4</td><td>POST</td><td><code>/api/v1/lookalike/runs/{runBatchId}/cancel</code></td><td>受控取消</td></tr>
+    <tr><td>5</td><td>POST</td><td><code>/api/v1/lookalike/runs/{runBatchId}/rerun</code></td><td>受控重跑（新批次，关联原批次）</td></tr>
+  </table>
+  <p class="strike">不再提供：<code>/eda</code>、<code>/features/analyze</code>、<code>/model/train</code>、<code>/lookalike/score</code>、<code>/processes</code>、<code>/candidates/upload</code>、<code>/generate</code>、<code>/dashboard</code>、结果导出、Segment 打分。</p>
+
+  <h3>6.3 创建运行</h3>
+  <p><code>POST /api/v1/lookalike/runs</code></p>
+  <pre><code>{
+  "runBatchId": "WCL-202608-0001",
+  "scoringMonth": "2026-08",
+  "productCode": "WCL",
+  "candidateSnapshotId": "SNAP-WCL-202608-01",
+  "featureSnapshotId": "FEAT-202608-T0",
+  "modelVersion": "wcl-lgb-3.2.0",
+  "triggerTime": "2026-08-01T02:00:00+07:00",
+  "traceId": "tr-8f3a...",
+  "idempotencyKey": "WCL|2026-08|SNAP-WCL-202608-01|wcl-lgb-3.2.0"
+}</code></pre>
+  <p><code>modelVersion</code> 可省略：此时解析该产品当前已审批且已发布的生效版本。响应返回 <code>state</code>、<code>resolvedModelId</code>、<code>resolvedModelVersion</code>。</p>
+
+  <h3>6.4 状态查询（调度回调用）</h3>
+  <pre><code>{
+  "runBatchId": "WCL-202608-0001",
+  "state": "RUNNING",
+  "productCode": "WCL",
+  "modelId": "M-WCL-LGB",
+  "modelVersion": "wcl-lgb-3.2.0",
+  "candidateCount": 4500000,
+  "validInputCount": 4488120,
+  "scoredCount": 2100400,
+  "writtenCount": 2100400,
+  "published": false,
+  "retryCount": 0,
+  "checkpoint": { "shardId": "14", "offset": 50000 },
+  "errorCode": null,
+  "traceId": "tr-8f3a..."
+}</code></pre>
+
+  <h3>6.5 错误码</h3>
+  <table>
+    <tr><th>code</th><th>含义</th><th>是否自动重试</th></tr>
+    <tr><td><code>0</code></td><td>成功</td><td>—</td></tr>
+    <tr><td><code>1001</code></td><td>参数缺失/非法</td><td>否</td></tr>
+    <tr><td><code>2001</code></td><td>调用方身份无效</td><td>否</td></tr>
+    <tr><td><code>2002</code></td><td>无权调用该接口</td><td>否</td></tr>
+    <tr><td><code>3002</code></td><td>同一幂等键运行冲突</td><td>否（返回已有运行）</td></tr>
+    <tr><td><code>4002</code></td><td>候选快照未就绪或不匹配</td><td>否（等依赖）</td></tr>
+    <tr><td><code>4003</code></td><td>特征快照/schema 不匹配</td><td>否</td></tr>
+    <tr><td><code>5003</code></td><td>模型未审批或未发布</td><td>否</td></tr>
+    <tr><td><code>5004</code></td><td>产物 checksum/签名失败</td><td>否</td></tr>
+    <tr><td><code>5101</code></td><td>瞬态读/写超时</td><td>是（≤3）</td></tr>
+    <tr><td><code>5102</code></td><td>出入库对账失败</td><td>否（不发布）</td></tr>
+    <tr><td><code>9999</code></td><td>未分类内部错误</td><td>按错误类型</td></tr>
+  </table>
+</section>
+
+<section id="ch7">
+  <h2>7. 推理运行时（Worker / 分片 / 幂等）</h2>
+  <h3>7.1 Worker 步骤</h3>
+  <ol>
+    <li><strong>解析模型</strong>：按产品 + 版本从 Registry 拉取已审批发布产物（模型 + 预处理 + feature_list 顺序 + 填补/截断阈值 + schema 版本），校验 checksum/签名。</li>
+    <li><strong>冻结输入</strong>：运行开始后候选快照、特征快照、模型版本不可变。</li>
+    <li><strong>组装输入</strong>：候选 ID 与特征快照按统一客户标识 JOIN；校验必填、缺失策略、schema；记录 valid / invalid。</li>
+    <li><strong>泄漏校验</strong>：对入模列执行 denylist；命中则失败，禁止降级继续。</li>
+    <li><strong>分片推理</strong>：默认 50,000 行/片；<code>predict_proba</code> 正类概率即为 Lookalike score；clip 到 [0, 1]。</li>
+    <li><strong>完整输出</strong>：每个有效候选都必须有分；不按分数过滤。</li>
+    <li><strong>分片提交</strong>：写入 CDP 暂存区或按 Replacing/去重键幂等写入；更新 checkpoint。</li>
+    <li><strong>对账发布</strong>：candidateCount、validInputCount、scoredCount、writtenCount 一致（允许已文档化的 invalid 差）后置 <code>published=true</code>。</li>
+  </ol>
+
+  <h3>7.2 不在推理中做的事</h3>
+  <ul>
+    <li>不训练、不重算 IV、不动态重选特征。</li>
+    <li>不应用 similarity threshold，不截 Top-K，不生成营销 Segment。</li>
+    <li>不排除「种子客户」——生产打分总体是候选快照，不是「全池减种子」。</li>
+    <li>冷启动：若已发布模型规定 Observation Window 内无行为客户为 invalid，则计入 <code>invalidInputCount</code> 并写原因码，不静默丢分。</li>
+  </ul>
+
+  <h3>7.3 幂等与重跑</h3>
+  <table>
+    <tr><th>场景</th><th>行为</th></tr>
+    <tr><td>调度重复投递同一幂等键</td><td>返回已有 <code>runBatchId</code>，不新建</td></tr>
+    <tr><td>Worker 崩溃后重启</td><td>从最近成功 checkpoint 续跑已提交分片之外的数据</td></tr>
+    <tr><td>受控 rerun</td><td>新 <code>runBatchId</code>，<code>rerunOf</code> 指向原批次；原 published 行保留</td></tr>
+    <tr><td>ClickHouse 短暂不可用</td><td>停止加压；退避重试 ≤3；超限 FAILED 并告警</td></tr>
+  </table>
+
+  <h3>7.4 产品隔离</h3>
+  <p>白领贷与房屋易贷使用独立模型、特征定义、批次与结果标识。Lite 容量基线默认<strong>串行</strong>跑两个产品；若需并行，须重算 Worker 配额。路由按 <code>productCode</code> 进入对应 Worker 池。</p>
+</section>
+
+<section id="ch8">
+  <h2>8. Sales CDP 结果 schema 与写入</h2>
+  <div class="callout callout-ok">客户附件定义了同步到 Sales CDP 的<strong>业务字段</strong>。物理表名、分区表达式、排序键、去重引擎、TTL 由 CDP 确认（SAD P-04）。Lookalike 是生产者，CDP 负责存储治理。</div>
+
+  <h3>8.1 业务字段（客户附件，必须落地）</h3>
+  <table>
+    <tr><th>业务字段名</th><th>建议物理列</th><th>类型</th><th>来源</th><th>说明</th></tr>
+    <tr><td>Lookalike Model ID x Profile ID</td><td><code>lookalike_key</code></td><td>String</td><td>拼接</td><td>复合唯一标识：Lookalike process ID（<code>run_batch_id</code>）与 Profile ID 拼接</td></tr>
+    <tr><td>Profile ID</td><td><code>profile_id</code></td><td>String</td><td>候选快照客户主键</td><td>客户在 CDP 的档案 ID</td></tr>
+    <tr><td>Lookalike score</td><td><code>lookalike_score</code></td><td>Decimal(8,4)</td><td>模型 <code>predict_proba</code></td><td>该 process 返回的相似度分，[0, 1]</td></tr>
+    <tr><td>Model ID</td><td><code>model_id</code></td><td>String</td><td>已发布模型元数据</td><td>模型标识</td></tr>
+    <tr><td>Lookalike model</td><td><code>lookalike_model</code></td><td>String</td><td>已发布模型元数据</td><td>模型名称</td></tr>
+    <tr><td>product ID</td><td><code>product_id</code></td><td>String</td><td>运行请求 <code>productCode</code></td><td>该次 Lookalike 使用的产品</td></tr>
+  </table>
+
+  <h3>8.2 复合键构造</h3>
+  <pre><code>lookalike_key = "{run_batch_id}x{profile_id}"
+# 示例
+# run_batch_id = WCL-202608-0001
+# profile_id   = 000123456789
+# lookalike_key = WCL-202608-0001x000123456789</code></pre>
+  <div class="callout callout-warn">附件字段名是「Model ID x Profile ID」，说明文字是「process ID joined with Profile ID」。本设计以<strong>说明文字为准</strong>：左侧必须是 <code>run_batch_id</code>（process/run），不能只用 <code>model_id</code>。同一模型每月对同一客户会再次打分；用 model×profile 会跨月冲突并破坏 SAD「按评分月与 run batch 隔离、重跑不覆盖已发布历史」的要求。</div>
+
+  <h3>8.3 追溯扩展列（SAD 最低要求，对 Smart Sales/审计）</h3>
+  <p>下列列<strong>不替代</strong>附件六字段，而是同一张结果表上的技术追溯列，便于对账与血缘：</p>
+  <table>
+    <tr><th>列</th><th>说明</th></tr>
+    <tr><td><code>run_batch_id</code></td><td>与复合键左侧一致，便于按批查询</td></tr>
+    <tr><td><code>scoring_month</code></td><td>YYYY-MM</td></tr>
+    <tr><td><code>model_version</code></td><td>已发布版本</td></tr>
+    <tr><td><code>feature_snapshot_id</code> / <code>candidate_snapshot_id</code></td><td>输入冻结引用</td></tr>
+    <tr><td><code>scored_at</code> / <code>trace_id</code></td><td>打分时间与追踪</td></tr>
+    <tr><td><code>publish_status</code></td><td><code>staging</code> / <code>published</code> / <code>superseded</code></td></tr>
+    <tr><td><code>rerun_of</code></td><td>受控重跑时指向原 <code>run_batch_id</code></td></tr>
+  </table>
+  <p>逻辑唯一键建议：<code>product_id + run_batch_id + profile_id + model_version</code>。ClickHouse 主键/ORDER BY/去重引擎待 CDP 详细设计确认。结果中<strong>不得</strong>包含证件号、完整账号、明文特征宽表。</p>
+
+  <h3>8.4 写入与发布</h3>
+  <ol>
+    <li>按 <code>CDP_BATCH_SIZE</code>（建议 5,000）批量 INSERT；同一 <code>lookalike_key</code> 幂等。</li>
+    <li>写入时 <code>publish_status=staging</code>；Smart Sales 查询必须过滤 <code>published</code>。</li>
+    <li>全批对账成功后原子更新（或写发布标志表）为 <code>published</code>。</li>
+    <li>对账失败：保持 staging，状态 <code>FAILED</code> / <code>5102</code>，不向下游开放。</li>
+    <li>Lookalike <strong>不</strong>再通过 REST/SFTP/Kafka 推送业务名单；若 CDP 侧另有物化视图，由 CDP 治理，不在本服务实现三套同步模式。</li>
+  </ol>
+
+  <h3>8.5 Smart Sales 消费约定</h3>
+  <ul>
+    <li>只读 <code>publish_status='published'</code> 的批次。</li>
+    <li>阈值、分层、Top-N、排除已持仓等业务规则在 Smart Sales 执行。</li>
+    <li>向 CRM 发送目标名单不经过 Lookalike。</li>
+  </ul>
+</section>
+
+<section id="ch9">
+  <h2>9. 数据模型</h2>
+  <div class="mermaid">
+erDiagram
+  Product ||--o{ ModelVersion : publishes
+  Product ||--o{ ScoringRun : runs
+  CandidateSnapshot ||--o{ CandidateCustomer : contains
+  CandidateSnapshot ||--o{ ScoringRun : referencedBy
+  FeatureSnapshot ||--o{ ScoringRun : referencedBy
+  ModelVersion ||--o{ ScoringRun : usedBy
+  ScoringRun ||--o{ CustomerScore : produces
+  ScoringRun ||--o{ AuditEvent : audits
+  </div>
+
+  <h3>9.1 所有权</h3>
+  <table>
+    <tr><th>对象</th><th>责任域</th><th>Lookalike 权限</th></tr>
+    <tr><td>候选快照</td><td>Smart Sales（物理位置待确认）</td><td>只读</td></tr>
+    <tr><td>特征快照</td><td>数据域（待确认）</td><td>只读</td></tr>
+    <tr><td>模型产物</td><td>模型治理 / Registry</td><td>只读</td></tr>
+    <tr><td>运行元数据 / checkpoint</td><td>Lookalike</td><td>读写</td></tr>
+    <tr><td>客户级分数</td><td>CDP 存储治理；Lookalike 生产</td><td>授权写入</td></tr>
+    <tr><td>目标名单 / CRM 跟进</td><td>Smart Sales / CRM</td><td>无</td></tr>
+  </table>
+
+  <h3>9.2 运行元数据（逻辑表 <code>scoring_run</code>）</h3>
+  <table>
+    <tr><th>列</th><th>说明</th></tr>
+    <tr><td><code>run_batch_id</code></td><td>PK；即 CDP process ID</td></tr>
+    <tr><td><code>scoring_month</code> / <code>product_code</code></td><td>运行维度</td></tr>
+    <tr><td><code>candidate_snapshot_id</code> / <code>feature_snapshot_id</code></td><td>冻结输入</td></tr>
+    <tr><td><code>model_id</code> / <code>model_version</code> / <code>artifact_checksum</code></td><td>已发布模型</td></tr>
+    <tr><td><code>state</code> / <code>retry_count</code> / <code>rerun_of</code></td><td>状态机</td></tr>
+    <tr><td><code>candidate_count</code> / <code>valid_input_count</code> / <code>scored_count</code> / <code>written_count</code></td><td>对账计数</td></tr>
+    <tr><td><code>checkpoint_json</code></td><td>分片进度</td></tr>
+    <tr><td><code>idempotency_key</code></td><td>唯一</td></tr>
+    <tr><td><code>error_code</code> / <code>error_message</code> / <code>trace_id</code></td><td>失败与追踪</td></tr>
+    <tr><td><code>started_at</code> / <code>completed_at</code></td><td>时间</td></tr>
+  </table>
+  <p>Lookalike <strong>不以</strong>自建 MySQL <code>t_score_result</code> 作为 Smart Sales 的消费源。若 Worker 需要本地暂存，仅作失败恢复缓冲，TTL 短、不对外查询。</p>
+
+  <h3>9.3 建议 ClickHouse 逻辑 DDL（名称待 CDP 确认）</h3>
+  <pre><code>CREATE TABLE lookalike_customer_score
+(
+    lookalike_key            String,
+    profile_id               String,
+    lookalike_score          Decimal(8, 4),
+    model_id                 String,
+    lookalike_model          String,
+    product_id               String,
+    run_batch_id             String,
+    scoring_month            String,
+    model_version            String,
+    candidate_snapshot_id    String,
+    feature_snapshot_id      String,
+    scored_at                DateTime,
+    trace_id                 String,
+    publish_status           LowCardinality(String),
+    rerun_of                 String
+)
+ENGINE = /* ReplacingMergeTree 或 CDP 指定去重引擎，待确认 */
+PARTITION BY scoring_month
+ORDER BY (product_id, run_batch_id, profile_id);</code></pre>
+</section>
+
+<section id="ch10">
+  <h2>10. 模型产物加载与预生产训练边界</h2>
+  <div class="callout callout-danger">生产 Lookalike <strong>不</strong>构建样本、不选特征、不训练、不调参。只加载已审批发布的模型与预处理产物。</div>
+
+  <h3>10.1 预生产（不在本服务生产路径）</h3>
+  <ol>
+    <li>业务定义种子、标签、候选范围、T0、验收指标（白领贷 / 房屋易贷分别进行）。</li>
+    <li>数据平台构建训练/验证/OOT，脱敏副本供分析。</li>
+    <li>EDA、IV、缺失/同值筛选、P99 截断、泄漏审计；比较算法后固化 Feature Spec 与 Model Recipe。</li>
+    <li>受控环境训练 LightGBM（主）与可选 LR+WOE（解释基线）；OOT 与稳定性评估。</li>
+    <li>治理审批：适用产品、版本、schema、checksum/签名、生效时间、回滚版本。</li>
+  </ol>
+  <p>预生产质量门禁基线（最终以模型治理为准）：缺失率 &gt;95% 剔除；同值率 &gt;95% 剔除；IV &lt;0.02 剔除；显著偏度按批准的 P99 截断；禁止 T0 之后才出现的结果/审批/放款/营销反馈字段。筛选与填补规则必须冻结进产物，生产只校验并执行，不重新筛选。</p>
+
+  <h3>10.2 生产加载契约</h3>
+  <pre><code>PublishedArtifact
+  model_id, model_name, product_code, model_version
+  feature_schema_version
+  feature_list[]          # 有序，打分列顺序必须一致
+  preprocessor            # 填补值、P99 阈值、编码水平
+  estimator               # LightGBM Booster / 兼容格式
+  leakage_denylist[]
+  checksum / signature
+  approval_status == published
+  effective_from / rollback_version</code></pre>
+  <p>加载失败（未发布、产品不匹配、schema 不一致、checksum 失败）→ 任务 <code>FAILED</code> / <code>5003</code> 或 <code>5004</code>，不得用缓存旧版本静默顶替，除非调度请求显式指定回滚版本且该版本仍为 published。</p>
+
+  <h3>10.3 PSI 与重训</h3>
+  <p>上线后按月监控分数/特征 PSI；0.25 为当前参考基线，正式阈值待治理批准。PSI 超阈 → <strong>告警工单</strong>，不在生产自动训练、不自动切换流量。新版本经预生产训练、OOT、审批发布后，由下一次月度调度解析到新版本。</p>
+</section>
+
+<section id="ch11">
+  <h2>11. 特征对齐、泄漏防护与冷启动</h2>
+  <p>复用本仓库已实现的 Adapter 与 denylist，扩展为生产 schema 校验，而不是在 Worker 里散落列名。</p>
+  <ul>
+    <li><code>src/lookalike/adapters/</code>：原始/宽表 → 模型帧；生产使用与产物绑定的 Feature Spec。</li>
+    <li><code>src/lookalike/adapters/leakage.py</code>：<code>ResponsePropensity</code>、放款后字段、证件号、CIF 等命中即失败。</li>
+    <li><code>src/lookalike/preprocessing/missing_outliers.py</code>：仅执行产物内冻结规则。</li>
+    <li>候选资格字段若在快照内为常量，不得进入特征矩阵（避免「学会资格规则」）。</li>
+  </ul>
+  <div class="callout callout-warn">DESIGN_PLAN 评审 F-03：圈选规则列若进入特征，会出现 AUC≈1.0 且把已持仓客户排到最前。生产不再圈选种子；预生产必须把标签定义列并入 denylist，并保留 AUC&gt;0.98 的泄漏告警。</div>
+  <p>客户主键逻辑名统一 <code>customer_id</code>；写入 CDP 时映射为 <code>profile_id</code>。与 <code>personal_cif</code> / <code>HostCif</code> 的正式映射待数据治理确认（SAD P-03）。</p>
+</section>
+
+<section id="ch12">
+  <h2>12. 安全、审计与隐私</h2>
+  <ul>
+    <li>无业务用户、无页面会话；调度平台、ClickHouse、Registry、运维平台使用<strong>分离的最小权限系统身份</strong>。</li>
+    <li>密钥不进代码、镜像或 <code>requirements.txt</code>；走银行批准的 Secret 机制。</li>
+    <li>传输使用批准的 TLS；静态加密由 CDP 与产物平台负责。</li>
+    <li>日志禁止记录证件号、完整账号、明文凭证、模型 Secret、不必要的特征值。</li>
+    <li>生产数据不得未授权复制到开发或外部；不得将真实客户数据提交公共大模型。</li>
+    <li>审计事件：触发、校验、模型加载、读写、状态变更、重试、失败；字段含 <code>run_batch_id</code>、<code>trace_id</code>、系统身份、结果、错误码。</li>
+  </ul>
+</section>
+
+<section id="ch13">
+  <h2>13. 非功能、容量与可观测性</h2>
+  <h3>13.1 容量基线（v2.3 Lite，非正式生产配额）</h3>
+  <table>
+    <tr><th>场景</th><th>单产品候选</th><th>Worker</th><th>配额</th></tr>
+    <tr><td>低</td><td>3.0M</td><td>2 × 4 vCPU / 16 GiB</td><td>8 vCPU / 32 GiB</td></tr>
+    <tr><td>期望</td><td>4.5M</td><td>3</td><td>12 vCPU / 48 GiB</td></tr>
+    <tr><td>高</td><td>6.0M</td><td>4</td><td>16 vCPU / 64 GiB</td></tr>
+  </table>
+  <ul>
+    <li>规划吞吐：500K 候选·模型 / 小时 / Worker（含读、组装、推理、回写），含 25% 余量。</li>
+    <li>单产品端到端窗口规划目标 ≤ 4 小时；正式 SLA 以 3.0M 与 6.0M 等价测试为准。</li>
+    <li>任务服务规划 2 vCPU / 4 GiB，只负责任务 API。</li>
+    <li>最终特征约 50 列（从约 100 候选特征压缩，且上游不再准备被删特征）。</li>
+    <li>存储逻辑估算（期望/高）：150 GB / 200 GB；分数约 0.25 KB/客户/模型/月，保留 12 个月——均待 CDP 确认。</li>
+  </ul>
+  <div class="callout callout-warn">废弃 v4 草案「5000 万全池、进程内 10 线程、6–7 小时」作为生产口径。该数字与 SAD 候选规模和 Worker 分离部署均不一致。</div>
+
+  <h3>13.2 可靠性目标</h3>
+  <table>
+    <tr><th>属性</th><th>目标</th></tr>
+    <tr><td>月度执行窗口可用性</td><td>参考 ≥ 99.5%（口径待运维确认）</td></tr>
+    <tr><td>自动重试</td><td>仅瞬态错误，最多 3 次，退避+抖动</td></tr>
+    <tr><td>在途数据</td><td>已提交分片故障后不丢</td></tr>
+    <tr><td>安全</td><td>无高危；中危关闭</td></tr>
+  </table>
+
+  <h3>13.3 监控告警</h3>
+  <table>
+    <tr><th>域</th><th>指标</th><th>告警示例</th></tr>
+    <tr><td>任务</td><td>排队、时长、状态、重试、成功率</td><td>月任务未启动、超时、反复重试</td></tr>
+    <tr><td>数据</td><td>候选数、有效数、缺失率、出入库差</td><td>候选异常、关键特征缺失、条数不一致</td></tr>
+    <tr><td>模型</td><td>版本、加载、分数分布、PSI</td><td>未发布版本、加载失败、分布突变</td></tr>
+    <tr><td>ClickHouse</td><td>写入吞吐、失败率、分区大小</td><td>超时、拒绝、分区异常增长</td></tr>
+  </table>
+  <p>结构化日志必须能按 <code>run_batch_id</code>、<code>product_code</code>、<code>model_version</code>、<code>trace_id</code> 检索。v4 草案承认的「无 JSON 日志 / 无 trace」在本版列为必须项，不再作为已知缺口遗留到上线。</p>
+</section>
+
+<section id="ch14">
+  <h2>14. 测试设计</h2>
+  <table>
+    <tr><th>层</th><th>重点</th></tr>
+    <tr><td>单测</td><td>复合键构造、幂等键、denylist 硬失败、预处理与训练一致性（列顺序/填补/P99）、状态机</td></tr>
+    <tr><td>契约测试</td><td>调度请求必填字段；CDP 六字段 + 追溯列；未发布批次不可被消费查询</td></tr>
+    <tr><td>集成</td><td>候选∩特征 JOIN、分片 checkpoint 续跑、对账失败不发布、rerun 新批次</td></tr>
+    <tr><td>性能门禁</td><td>3.0M 与 6.0M 端到端；记录 CPU/内存/读写/恢复时间/幂等</td></tr>
+    <tr><td>安全</td><td>依赖与镜像扫描、渗透；无高危</td></tr>
+  </table>
+  <p>必须覆盖的负例：模型未发布、schema 多列/少列、denylist 残留、重复投递、候选未就绪、ClickHouse 写入部分失败、用 <code>model_id</code> 而非 <code>run_batch_id</code> 构造复合键。</p>
+  <p>仓库现有 <code>tests/test_adapters.py</code>、<code>tests/test_lookalike.py</code> 在生产改造期保留为预生产/回归；新增 <code>tests/test_cdp_schema.py</code>、<code>tests/test_run_orchestrator.py</code> 覆盖本章契约。交互式上传与 Segment 用例标记删除，不再作为验收。</p>
+</section>
+
+<section id="ch15">
+  <h2>15. 仓库落地映射与废弃能力</h2>
+  <h3>15.1 目标目录（生产）</h3>
+  <pre><code>src/lookalike/
+  api/runs.py              # 调度任务 API
+  orchestrator/            # 状态机、幂等、checkpoint
+  workers/scoring.py       # 分片推理（替换 generate.py 的上传候选路径）
+  adapters/                # 保留：schema 对齐 + leakage
+  modeling/lightgbm_model.py  # 仅 predict
+  preprocessing/           # 仅执行冻结规则
+  integrations/cdp_clickhouse.py
+  integrations/artifact_repo.py
+  domain/run_store.py      # 运行元数据（替换 process_store 的业务 Process）</code></pre>
+  <h3>15.2 预生产保留（不进生产镜像）</h3>
+  <p><code>eda/</code>、<code>features/iv.py</code>、<code>pipeline/service.py</code> 中的 <code>train</code>、<code>scripts/full_process.py</code> 继续服务模型团队；通过独立 image/extra 安装。</p>
+  <h3>15.3 当前仓库 API 的退役表</h3>
+  <table>
+    <tr><th>现端点</th><th>v4.0</th></tr>
+    <tr><td><code>POST /api/v1/eda</code></td><td>退役（预生产脚本）</td></tr>
+    <tr><td><code>POST /api/v1/features/analyze</code></td><td>退役</td></tr>
+    <tr><td><code>POST /api/v1/model/train</code></td><td>退役出生产</td></tr>
+    <tr><td><code>POST /api/v1/lookalike/score</code></td><td>退役</td></tr>
+    <tr><td><code>GET /api/v1/dashboard</code></td><td>退役</td></tr>
+    <tr><td><code>POST /api/v1/processes</code> 及 upload/generate/version</td><td>退役；由 <code>/runs</code> 取代</td></tr>
+  </table>
+  <p>实现顺序建议：先落地 Run API + Worker 读快照 + ClickHouse writer + denylist；再删除上传/Process 路径；最后收缩生产镜像依赖。在代码切换完成前，本文档是目标态，不以当前 FastAPI 上传实现为生产合同。</p>
+</section>
+
+<section id="ch16">
+  <h2>16. 待确认项、风险与演进</h2>
+  <h3>16.1 待确认（继承 SAD Appendix 6.3）</h3>
+  <p>调度接口与时区（P-01）、候选交接位置（P-02）、客户主键映射（P-03）、ClickHouse 物理设计（P-04）、模型产物平台（P-05）、容量与 SLA 实测（P-06）、部署平台与 Python patch（P-07）、网络与 Secret（P-08）、监控（P-09）、备份容灾（P-10）、Smart Sales–CRM（P-11）、业务反馈归因（P-12）、治理阈值（P-13）。未确认项不得写成「已实现能力」。</p>
+
+  <h3>16.2 主要风险</h3>
+  <table>
+    <tr><th>ID</th><th>风险</th><th>缓解</th></tr>
+    <tr><td>R-01</td><td>候选或特征快照未在窗口内就绪</td><td>调度依赖检查、就绪标志、受控重跑</td></tr>
+    <tr><td>R-02</td><td>候选/特征/模型版本错配</td><td>冻结引用、schema 与 checksum 校验</td></tr>
+    <tr><td>R-03</td><td>候选量超出 4 小时窗口</td><td>3.0M/6.0M 性能测试，校准分片与并行策略</td></tr>
+    <tr><td>R-04</td><td>重试产生重复分</td><td>复合键幂等、发布标志、出入库对账</td></tr>
+    <tr><td>R-05</td><td>未发布模型进入生产</td><td>审批状态 + 签名；禁止静默回退</td></tr>
+    <tr><td>R-07</td><td>分布漂移</td><td>月度 PSI 告警；治理后发布新版本</td></tr>
+  </table>
+
+  <h3>16.3 验收基线（业务，非正式 SLA）</h3>
+  <ul>
+    <li>白领贷：Top 20% 名单响应率 ≥ 历史同类 1.2 倍（上线后 30 天 A/B 或等效对照）。</li>
+    <li>房屋易贷：Top 20% 合格线索率、申请转化率 ≥ 历史 1.2 倍。</li>
+    <li>两产品：AUC/KS 在验证/OOT 透明报告，不预设硬门禁；Lift@Top20% 参考 ≥ 1.2。</li>
+  </ul>
+
+  <h3>16.4 ADR（本版）</h3>
+  <ol>
+    <li>生产形态 = 无前端批处理推理服务，不是交互式 Lookalike 平台。</li>
+    <li>打分总体 = Smart Sales 候选快照全量有效客户，不是全行客户主数据，也不是用户上传/Segment。</li>
+    <li>CDP 主路径 = ClickHouse 幂等写入 + 对账后发布；附件六字段为业务合同。</li>
+    <li>复合键左侧 = <code>run_batch_id</code>（process ID），不是单独的 <code>model_id</code>。</li>
+    <li>训练与推理解耦；生产镜像无训练栈；PSI 不自动切流。</li>
+    <li>Lookalike 不直连 CRM；阈值与选客在 Smart Sales。</li>
+    <li>分数只用于营销排序，不进入授信决策。</li>
+  </ol>
+</section>
+
+<p class="footer">Lookalike 月度批处理打分服务 — 详细设计说明书 v4.0 · 对齐 SAD V1.0 与 Sales CDP 附件 schema · 2026-08-17</p>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</body>
+</html>
