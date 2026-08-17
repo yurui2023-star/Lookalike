@@ -1,6 +1,8 @@
 # Lookalike 定时打分服务 — 改造方案
 
-> 版本：v1.0 | 日期：2026-08-12
+> **已被 v4.0 取代，请勿按本文实现。** 生产目标设计见 [`Lookalike_Detailed_Design_v4.0_BatchScoring.html`](Lookalike_Detailed_Design_v4.0_BatchScoring.html)。本文的种子 SQL / 生产训练 / 全特征表打分与 SAD V1.0 冲突；评审结论仍见 [`DESIGN_PLAN_REVIEW.md`](DESIGN_PLAN_REVIEW.md)。
+>
+> 版本：v1.0 | 日期：2026-08-12 | 状态：archived
 
 ---
 

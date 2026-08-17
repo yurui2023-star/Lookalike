@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookalike Monthly Batch Scoring Service — Detailed Design v4.0</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:#fff; --bg2:#f7f8fa; --bg3:#f0f1f3; --text:#1a1a2e; --muted:#6b7280;
+    --border:#e5e7eb; --strong:#d1d5db; --accent:#0f6e56; --accent-bg:#e1f5ee;
+    --blue:#185fa5; --blue-bg:#e6f1fb; --amber:#854f0b; --amber-bg:#faeeda;
+    --red:#a32d2d; --red-bg:#fcebeb; --coral:#d85a30; --r:8px; --rl:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',Arial,sans-serif;background:var(--bg3);color:var(--text);line-height:1.7;font-size:14px}
+  .container{max-width:1100px;margin:0 auto;padding:24px}
+  .doc-header{background:linear-gradient(135deg,#0f6e56,#0b5442);color:#fff;padding:40px 32px;border-radius:var(--rl);margin-bottom:24px}
+  .doc-header h1{font-size:26px;font-weight:600;margin-bottom:8px}
+  .doc-header .subtitle{opacity:.9;margin-bottom:18px}
+  .doc-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px}
+  .doc-meta .label{opacity:.65;display:block}
+  .toc,section{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:28px 32px;margin-bottom:18px}
+  .toc h2,section>h2{font-size:20px;border-bottom:2px solid var(--accent);padding-bottom:8px;margin-bottom:16px}
+  h3{font-size:16px;margin:18px 0 10px}
+  h4{font-size:14px;margin:12px 0 8px}
+  p,li{margin-bottom:8px}
+  ul,ol{padding-left:22px;margin-bottom:12px}
+  a{color:var(--accent)}
+  code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--coral)}
+  pre{background:#1e2430;color:#e8eaed;padding:14px;border-radius:var(--r);overflow-x:auto;margin-bottom:14px;font-size:12px;line-height:1.5}
+  pre code{background:none;color:inherit;padding:0}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+  th{background:var(--bg2);text-align:left;padding:9px 10px;border-bottom:2px solid var(--strong);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .badge-drop{background:var(--red-bg);color:var(--red)}
+  .callout{border-left:4px solid;padding:12px 14px;margin-bottom:14px;border-radius:0 var(--r) var(--r) 0;font-size:13px}
+  .callout-info{border-color:var(--blue);background:var(--blue-bg)}
+  .callout-warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout-ok{border-color:var(--accent);background:var(--accent-bg)}
+  .callout-danger{border-color:var(--red);background:var(--red-bg)}
+  .mermaid{text-align:center;margin:12px 0 16px}
+  .stat-row{display:flex;gap:20px;flex-wrap:wrap;margin:12px 0}
+  .stat .num{font-size:22px;font-weight:700;color:var(--accent)}
+  .stat .label{font-size:12px;color:var(--muted)}
+  .footer{text-align:center;color:var(--muted);margin:20px 0 40px;font-size:12px}
+  .strike{text-decoration:line-through;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="doc-header">
+  <h1>Lookalike Monthly Batch Scoring Service — Detailed Design v4.0</h1>
+  <div class="subtitle">No frontend · Pre-production training / production inference only · Monthly full-population scoring of the candidate pool · Results written to Sales CDP ClickHouse</div>
+  <div class="doc-meta">
+    <div><span class="label">Version</span><strong>4.0</strong></div>
+    <div><span class="label">Date</span><strong>2026-08-17</strong></div>
+    <div><span class="label">Aligned SAD</span><strong>MB Bank Lookalike V1.0</strong></div>
+    <div><span class="label">Products</span><strong>White-Collar Loan / Home Easy Loan</strong></div>
+    <div><span class="label">Status</span><strong>Draft · pending architecture and stakeholder review</strong></div>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#ch1">1. Overview and customer changes</a></li>
+    <li><a href="#ch2">2. Optimizations versus v2.1 and the v4 draft</a></li>
+    <li><a href="#ch3">3. System boundary and confirmed decisions</a></li>
+    <li><a href="#ch4">4. Logical architecture</a></li>
+    <li><a href="#ch5">5. Monthly batch flow</a></li>
+    <li><a href="#ch6">6. Scheduling-platform task API</a></li>
+    <li><a href="#ch7">7. Inference runtime</a></li>
+    <li><a href="#ch8">8. Sales CDP schema and write path</a></li>
+    <li><a href="#ch9">9. Data model</a></li>
+    <li><a href="#ch10">10. Artifact loading and pre-production boundary</a></li>
+    <li><a href="#ch11">11. Feature alignment and leakage control</a></li>
+    <li><a href="#ch12">12. Security and audit</a></li>
+    <li><a href="#ch13">13. NFR, capacity, observability</a></li>
+    <li><a href="#ch14">14. Test design</a></li>
+    <li><a href="#ch15">15. Repository mapping and retired APIs</a></li>
+    <li><a href="#ch16">16. Open items, risks, ADRs</a></li>
+  </ol>
+</div>
+
+<section id="ch1">
+  <h2>1. Overview and customer changes</h2>
+  <div class="callout callout-ok">This document is the implementation-level design for <strong>SAD V1.0</strong> (SAD REF-05). Customer confirmation: <strong>no Lookalike frontend</strong>; after models are built and published in pre-production, <strong>monthly batch scoring of the full eligible candidate set</strong>; scores synced to <strong>Sales CDP</strong> using the attached field schema. <strong>File upload</strong> and <strong>Segment-based scoring</strong> are retired.</div>
+
+  <h3>1.1 Meaning of “full-population scoring”</h3>
+  <div class="callout callout-warn">“Score all customers monthly” means: score <strong>every valid customer in the frozen monthly candidate snapshot</strong> that Smart Sales built from product eligibility, active-status, exclusion-list, and compliance rules. Inference applies <strong>no threshold and no Top-K</strong>. Filtering and list building stay in Smart Sales after it reads CDP. This is <strong>not</strong> scoring the bank-wide customer master (SAD reference ~35.72M).</div>
+
+  <h3>1.2 Terms</h3>
+  <table>
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tr><td>Candidate snapshot</td><td>Frozen eligible set from Smart Sales; the only production scoring population</td></tr>
+    <tr><td>Feature snapshot</td><td>T0-aligned features matching the published model schema</td></tr>
+    <tr><td>Scoring run / <code>run_batch_id</code></td><td>Lookalike process ID for one product + month + snapshots + model version</td></tr>
+    <tr><td>Profile ID</td><td>CDP profile key; logical <code>customer_id</code>; physical mapping to HostCif / personal_cif is TBC</td></tr>
+    <tr><td>Lookalike score</td><td>Positive-class probability in [0, 1]</td></tr>
+    <tr><td>Sales CDP</td><td>Score persistence and governance; physical store is CDP-owned ClickHouse</td></tr>
+    <tr><td>Seed</td><td>Pre-production positives only; production never accepts seed uploads</td></tr>
+  </table>
+</section>
+
+<section id="ch2">
+  <h2>2. Optimizations versus v2.1 and the v4 draft</h2>
+  <h3>2.1 Retired capabilities</h3>
+  <table>
+    <tr><th>Former capability</th><th>Disposition</th></tr>
+    <tr><td>React / eight business screens</td><td><span class="badge badge-drop">Removed</span> — customer + SAD AD-01</td></tr>
+    <tr><td>Seed / candidate CSV upload</td><td><span class="badge badge-drop">Removed</span></td></tr>
+    <tr><td>Segment-based scoring</td><td><span class="badge badge-drop">Removed</span> — eligibility owned by Smart Sales</td></tr>
+    <tr><td>Create Process / Generate / Version Dashboard</td><td><span class="badge badge-drop">Removed</span></td></tr>
+    <tr><td>Threshold / Top-K / file export</td><td><span class="badge badge-drop">Moved to Smart Sales</span></td></tr>
+    <tr><td>Direct CRM integration</td><td><span class="badge badge-drop">Removed</span> — SAD AD-08</td></tr>
+    <tr><td>Production training / auto seed extract / auto retrain cutover</td><td><span class="badge badge-drop">Removed</span> — SAD AD-03</td></tr>
+  </table>
+
+  <h3>2.2 Corrections to the v4 batch-scoring draft</h3>
+  <table>
+    <tr><th>#</th><th>Draft issue</th><th>This version</th></tr>
+    <tr><td>1</td><td>Score the entire feature store (~50M)</td><td>Score the Smart Sales candidate snapshot; capacity baseline 3.0M–6.0M per product</td></tr>
+    <tr><td>2</td><td>In-process APScheduler as primary trigger</td><td>Scheduling platform initiates monthly product-level runs</td></tr>
+    <tr><td>3</td><td>PSI &gt; 0.25 auto-retrains in production</td><td>PSI alerts only; retraining stays in model governance</td></tr>
+    <tr><td>4</td><td>CDP sync via REST / SFTP / Kafka</td><td>Idempotent ClickHouse writes; publish after reconciliation</td></tr>
+    <tr><td>5</td><td>Missing composite business key</td><td>Attachment field <code>Lookalike Model ID x Profile ID</code> = process ID joined with Profile ID</td></tr>
+    <tr><td>6</td><td>Business-user JWT and result/dashboard APIs</td><td>System-to-system auth; task, status, health, controlled rerun only</td></tr>
+    <tr><td>7</td><td>In-process thread-pool scoring</td><td>Task service separated from Scoring Workers</td></tr>
+    <tr><td>8</td><td>Product code SFU vs SAD names</td><td>White-Collar Loan and Home Easy Loan; <code>product_code</code> TBC</td></tr>
+    <tr><td>9</td><td>Draft still listed result/dashboard/export modules</td><td>Production image has no business UI or file export</td></tr>
+    <tr><td>10</td><td>Production seed SQL / rule-column leakage</td><td>Seeds only in pre-production; keep <code>leakage.py</code> hard-fail</td></tr>
+  </table>
+</section>
+
+<section id="ch3">
+  <h2>3. System boundary and confirmed decisions</h2>
+  <p>Lookalike is an independent backend batch inference service. It does not own customer, product, candidate-pool, or CRM master data. Scores are for marketing ranking only and do not replace eligibility, fraud, credit approval, pricing, collateral, or disbursement decisions.</p>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>AD-01</td><td>Backend batch service without a frontend, separated from Smart Sales</td></tr>
+    <tr><td>AD-02</td><td>White-Collar Loan and Home Easy Loan only; independent models; no cross-product model</td></tr>
+    <tr><td>AD-03</td><td>Bank provides seeds; train/validate/publish before production; production infers only</td></tr>
+    <tr><td>AD-04</td><td>Smart Sales calculates and provides the eligible candidate pool</td></tr>
+    <tr><td>AD-05</td><td>Scheduling platform starts product-level monthly runs</td></tr>
+    <tr><td>AD-06</td><td>Score all valid candidates; no threshold or Top-K in inference</td></tr>
+    <tr><td>AD-07</td><td>Write the complete result set to CDP ClickHouse, isolated by month and run batch</td></tr>
+    <tr><td>AD-08</td><td>Smart Sales sends the list to CRM; Lookalike does not call CRM</td></tr>
+    <tr><td>AD-09</td><td>CRM holds RM follow-up; feedback fields TBC</td></tr>
+  </table>
+  <div class="mermaid">
+flowchart LR
+  SS[Smart Sales<br/>candidate snapshot] --> SCH[Scheduling platform]
+  SCH --> LA[Lookalike<br/>validate / load / score]
+  FEAT[Feature snapshot] --> LA
+  REG[Published model] --> LA
+  LA --> CDP[CDP ClickHouse]
+  CDP --> SS2[Smart Sales<br/>select customers]
+  SS2 --> CRM[CRM]
+  </div>
+</section>
+
+<section id="ch4">
+  <h2>4. Logical architecture</h2>
+  <div class="mermaid">
+flowchart TB
+  SCH[Scheduling platform] --> API[Batch Task API]
+  API --> ORCH[Run Orchestrator]
+  ORCH --> META[(Task metadata)]
+  ORCH --> RES[Model resolver]
+  RES --> ASM[Input assembler]
+  CR[Candidate reader] --> ASM
+  FR[Feature reader] --> ASM
+  ASM --> WCL[WCL Worker]
+  ASM --> HEL[HEL Worker]
+  WCL --> WR[Score writer]
+  HEL --> WR
+  WR --> CH[(CDP ClickHouse)]
+  </div>
+  <table>
+    <tr><th>Unit</th><th>Responsibility</th><th>Baseline</th></tr>
+    <tr><td>Batch Task Service</td><td>Intake, validation, status, cancel/rerun; no UI</td><td>Python 3.12 + FastAPI + Uvicorn</td></tr>
+    <tr><td>Scoring Worker</td><td>Transform, load model, sharded inference, checkpoint</td><td>4 vCPU / 16 GiB per worker as the performance-test unit</td></tr>
+    <tr><td>Task metadata store</td><td>State, idempotency, checkpoints</td><td>Must not live only in process memory</td></tr>
+    <tr><td>CDP ClickHouse</td><td>Customer-level scores</td><td>CDP owns cluster, ACL, partitions, TTL</td></tr>
+  </table>
+  <p>The production image excludes training, EDA, SHAP, Optuna, frontend, upload, and Segment parsing.</p>
+</section>
+
+<section id="ch5">
+  <h2>5. Monthly batch flow</h2>
+  <div class="mermaid">
+sequenceDiagram
+  participant SS as Smart Sales
+  participant SCH as Scheduler
+  participant LA as Lookalike
+  participant REG as Registry
+  participant DP as Handover
+  participant CDP as ClickHouse
+  SS->>DP: Publish candidate snapshot
+  SCH->>LA: POST /runs
+  LA->>LA: Validate idempotency, snapshots, published model
+  LA->>REG: Load artifact + checksum + schema
+  LA->>DP: Read candidate ∩ features by shard
+  LA->>LA: Full inference without threshold
+  LA->>CDP: Idempotent write staging
+  LA->>CDP: Reconcile then publish
+  LA->>SCH: SUCCEEDED
+  SS->>CDP: Read published batch only
+  </div>
+  <p>States: <code>PENDING</code> → <code>VALIDATING</code> → <code>RUNNING</code> → <code>SUCCEEDED</code> / <code>FAILED</code>; transient errors → <code>RETRYING</code> (max 3); cancel → <code>CANCELLED</code>. ClickHouse writes stay <code>staging</code> until count reconciliation sets <code>published</code>. Duplicate idempotency keys must not create uncontrolled extra runs. A controlled rerun uses a <strong>new</strong> <code>run_batch_id</code> linked to the original and must not overwrite published history.</p>
+</section>
+
+<section id="ch6">
+  <h2>6. Scheduling-platform task API</h2>
+  <div class="callout callout-info">No business-user APIs. Protocol, auth, timezone, and callbacks remain TBC (SAD P-01). The contract below is the detailed-design proposal.</div>
+  <table>
+    <tr><th>#</th><th>Method</th><th>Path</th><th>Purpose</th></tr>
+    <tr><td>1</td><td>GET</td><td><code>/health</code></td><td>Liveness/readiness</td></tr>
+    <tr><td>2</td><td>POST</td><td><code>/api/v1/lookalike/runs</code></td><td>Create a product-level monthly run</td></tr>
+    <tr><td>3</td><td>GET</td><td><code>/api/v1/lookalike/runs/{runBatchId}</code></td><td>Status, counts, errors, retries</td></tr>
+    <tr><td>4</td><td>POST</td><td><code>/api/v1/lookalike/runs/{runBatchId}/cancel</code></td><td>Controlled cancel</td></tr>
+    <tr><td>5</td><td>POST</td><td><code>/api/v1/lookalike/runs/{runBatchId}/rerun</code></td><td>New batch linked to the original</td></tr>
+  </table>
+  <p class="strike">Retired: <code>/eda</code>, <code>/features/analyze</code>, <code>/model/train</code>, <code>/lookalike/score</code>, <code>/processes</code>, candidate upload, generate, dashboard, export, Segment scoring.</p>
+  <pre><code>{
+  "runBatchId": "WCL-202608-0001",
+  "scoringMonth": "2026-08",
+  "productCode": "WCL",
+  "candidateSnapshotId": "SNAP-WCL-202608-01",
+  "featureSnapshotId": "FEAT-202608-T0",
+  "modelVersion": "wcl-lgb-3.2.0",
+  "triggerTime": "2026-08-01T02:00:00+07:00",
+  "traceId": "tr-8f3a...",
+  "idempotencyKey": "WCL|2026-08|SNAP-WCL-202608-01|wcl-lgb-3.2.0"
+}</code></pre>
+  <table>
+    <tr><th>code</th><th>Meaning</th><th>Auto-retry</th></tr>
+    <tr><td><code>1001</code> / <code>2001</code> / <code>2002</code></td><td>Bad request / auth / forbidden</td><td>No</td></tr>
+    <tr><td><code>3002</code></td><td>Idempotency conflict — return existing run</td><td>No</td></tr>
+    <tr><td><code>4002</code> / <code>4003</code></td><td>Candidate or feature snapshot not ready / schema mismatch</td><td>No</td></tr>
+    <tr><td><code>5003</code> / <code>5004</code></td><td>Model not published / checksum failure</td><td>No</td></tr>
+    <tr><td><code>5101</code></td><td>Transient I/O timeout</td><td>Yes, ≤3</td></tr>
+    <tr><td><code>5102</code></td><td>Reconciliation failure — do not publish</td><td>No</td></tr>
+  </table>
+</section>
+
+<section id="ch7">
+  <h2>7. Inference runtime</h2>
+  <ol>
+    <li>Resolve the approved published artifact (model, preprocessor, ordered <code>feature_list</code>, impute/P99, schema version); verify checksum/signature.</li>
+    <li>Freeze candidate snapshot, feature snapshot, and model version for the run.</li>
+    <li>JOIN candidates to features; record valid/invalid; apply published missing-value rules.</li>
+    <li>Hard-fail on leakage denylist hits.</li>
+    <li>Score shards of 50,000 rows; <code>predict_proba</code> is the Lookalike score, clipped to [0, 1].</li>
+    <li>Every valid candidate receives a score; no score filter.</li>
+    <li>Commit shards idempotently; update checkpoints.</li>
+    <li>Publish only after candidate / valid / scored / written counts reconcile.</li>
+  </ol>
+  <p>Production does not train, recompute IV, reselect features, apply a similarity threshold, build Segments, or exclude “seed” IDs from the candidate snapshot. Cold-start rows classified as invalid by the published spec are counted with a reason code, not dropped silently.</p>
+  <p>Lite capacity runs the two products serially by default. Parallel execution requires a quota recalculation. Workers are routed by <code>productCode</code>.</p>
+</section>
+
+<section id="ch8">
+  <h2>8. Sales CDP schema and write path</h2>
+  <div class="callout callout-ok">The customer spreadsheet is the <strong>business contract</strong> for Sales CDP. Physical table names, PARTITION BY, ORDER BY, dedup engine, and TTL are TBC with CDP (SAD P-04).</div>
+  <table>
+    <tr><th>Business name</th><th>Physical column</th><th>Source</th><th>Description</th></tr>
+    <tr><td>Lookalike Model ID x Profile ID</td><td><code>lookalike_key</code></td><td>Concatenation</td><td>Unique key: Lookalike process ID joined with Profile ID</td></tr>
+    <tr><td>Profile ID</td><td><code>profile_id</code></td><td>Candidate snapshot</td><td>Customer profile ID</td></tr>
+    <tr><td>Lookalike score</td><td><code>lookalike_score</code></td><td><code>predict_proba</code></td><td>Score for this process, [0, 1]</td></tr>
+    <tr><td>Model ID</td><td><code>model_id</code></td><td>Published metadata</td><td>Model identifier</td></tr>
+    <tr><td>Lookalike model</td><td><code>lookalike_model</code></td><td>Published metadata</td><td>Model name</td></tr>
+    <tr><td>product ID</td><td><code>product_id</code></td><td>Run request</td><td>Product used for this Lookalike run</td></tr>
+  </table>
+  <pre><code>lookalike_key = "{run_batch_id}x{profile_id}"
+# WCL-202608-0001x000123456789</code></pre>
+  <div class="callout callout-warn">The spreadsheet title says “Model ID x Profile ID”; the description says “process ID joined with Profile ID”. This design follows the description: the left side is <code>run_batch_id</code>. Using <code>model_id</code> alone would collide across months and violate SAD isolation and non-overwrite of published history.</div>
+  <p>Technical columns on the same table (do not replace the six business fields): <code>run_batch_id</code>, <code>scoring_month</code>, <code>model_version</code>, snapshot IDs, <code>scored_at</code>, <code>trace_id</code>, <code>publish_status</code>, <code>rerun_of</code>. Logical uniqueness: <code>product_id + run_batch_id + profile_id + model_version</code>. Results must not include national IDs, full account numbers, or the raw feature vector.</p>
+  <ol>
+    <li>Batch INSERT (suggested 5,000); idempotent on <code>lookalike_key</code>.</li>
+    <li>Write as <code>staging</code>; Smart Sales may read only <code>published</code>.</li>
+    <li>After reconciliation, mark <code>published</code>.</li>
+    <li>On reconciliation failure keep staging and fail the run (<code>5102</code>).</li>
+    <li>Lookalike does not implement a second REST/SFTP/Kafka business sync path.</li>
+  </ol>
+</section>
+
+<section id="ch9">
+  <h2>9. Data model</h2>
+  <div class="mermaid">
+erDiagram
+  Product ||--o{ ModelVersion : publishes
+  Product ||--o{ ScoringRun : runs
+  CandidateSnapshot ||--o{ ScoringRun : referencedBy
+  FeatureSnapshot ||--o{ ScoringRun : referencedBy
+  ModelVersion ||--o{ ScoringRun : usedBy
+  ScoringRun ||--o{ CustomerScore : produces
+  ScoringRun ||--o{ AuditEvent : audits
+  </div>
+  <p>Lookalike reads candidate and feature snapshots; writes run metadata and CDP scores. It does not own the target list or CRM follow-up. A local <code>t_score_result</code> is not the Smart Sales consumption source; any worker spill file is a short-TTL recovery buffer only.</p>
+  <pre><code>CREATE TABLE lookalike_customer_score
+(
+    lookalike_key String,
+    profile_id String,
+    lookalike_score Decimal(8, 4),
+    model_id String,
+    lookalike_model String,
+    product_id String,
+    run_batch_id String,
+    scoring_month String,
+    model_version String,
+    candidate_snapshot_id String,
+    feature_snapshot_id String,
+    scored_at DateTime,
+    trace_id String,
+    publish_status LowCardinality(String),
+    rerun_of String
+)
+ENGINE = /* TBC with CDP */
+PARTITION BY scoring_month
+ORDER BY (product_id, run_batch_id, profile_id);</code></pre>
+</section>
+
+<section id="ch10">
+  <h2>10. Artifact loading and pre-production boundary</h2>
+  <div class="callout callout-danger">Production Lookalike does not build samples, select features, train, or tune. It only loads approved published artifacts.</div>
+  <p>Pre-production (outside the production path): bank-defined seeds and T0; governed train/validate/OOT; EDA, IV, missing/identical filters, P99; LightGBM primary and optional LR+WOE; governance approval of version, schema, checksum, effective time, rollback.</p>
+  <p>Quality gates (subject to model governance): drop missing &gt;95% or identical &gt;95% or IV &lt;0.02; approved P99 for skew; no post-T0 outcome/approval/disbursement/marketing-feedback fields. Filters and imputes freeze into the artifact; production executes them and does not reselect features.</p>
+  <p>Load failure (unpublished, product mismatch, schema mismatch, checksum) fails the run. Do not silently substitute a cached older version unless the request names a still-published rollback version.</p>
+  <p>Monthly PSI uses 0.25 as the current reference baseline. Breach raises an alert ticket; production does not auto-train or auto-cut traffic. The next monthly run picks up a newly published version after governance.</p>
+</section>
+
+<section id="ch11">
+  <h2>11. Feature alignment and leakage control</h2>
+  <p>Reuse <code>src/lookalike/adapters/</code> and <code>leakage.py</code> (<code>ResponsePropensity</code>, post-disbursement fields, ID numbers, CIF). Eligibility-constant columns must not enter the feature matrix. DESIGN_PLAN finding F-03 still applies in pre-production: label-defining columns in the feature set produce AUC≈1.0 and rank existing holders first. Map logical <code>customer_id</code> to CDP <code>profile_id</code>; HostCif / personal_cif mapping is SAD P-03.</p>
+</section>
+
+<section id="ch12">
+  <h2>12. Security and audit</h2>
+  <ul>
+    <li>No business users or page sessions; separate least-privilege system identities.</li>
+    <li>Secrets stay out of code, images, and requirement files.</li>
+    <li>Logs must not contain national IDs, full account numbers, credentials, model secrets, or unnecessary feature values.</li>
+    <li>Audit: trigger, validation, model load, I/O, state change, retry, failure — with <code>run_batch_id</code>, <code>trace_id</code>, identity, result, error code.</li>
+  </ul>
+</section>
+
+<section id="ch13">
+  <h2>13. NFR, capacity, observability</h2>
+  <table>
+    <tr><th>Scenario</th><th>Candidates / product</th><th>Workers</th><th>Quota</th></tr>
+    <tr><td>Low</td><td>3.0M</td><td>2 × 4 vCPU / 16 GiB</td><td>8 vCPU / 32 GiB</td></tr>
+    <tr><td>Expected</td><td>4.5M</td><td>3</td><td>12 vCPU / 48 GiB</td></tr>
+    <tr><td>High</td><td>6.0M</td><td>4</td><td>16 vCPU / 64 GiB</td></tr>
+  </table>
+  <p>Planning throughput 500K candidate-model records/hour/Worker including 25% headroom. End-to-end window target ≤ 4 hours per product-model run; formal SLA after 3.0M and 6.0M tests. Task service ~2 vCPU / 4 GiB. ~50 final features. Storage planning 150–200 GB is not a ClickHouse quota. Discard the v4-draft “50M pool / in-process 10 threads” numbers.</p>
+  <p>Reference availability ≥ 99.5% in the monthly window. Structured logs must be queryable by <code>run_batch_id</code>, <code>product_code</code>, <code>model_version</code>, <code>trace_id</code>. Missing JSON logs / trace IDs are no longer accepted as known gaps at go-live.</p>
+</section>
+
+<section id="ch14">
+  <h2>14. Test design</h2>
+  <p>Unit: composite key, idempotency, denylist hard-fail, train/serve preprocessor parity, state machine. Contract: scheduler required fields; six CDP business fields plus lineage columns; unpublished batches not consumable. Integration: JOIN, checkpoint resume, failed reconciliation, rerun new batch. Performance gates: 3.0M and 6.0M. Negative cases: unpublished model, schema drift, denylist residue, duplicate submit, candidate not ready, partial ClickHouse write, constructing the key from <code>model_id</code> instead of <code>run_batch_id</code>.</p>
+  <p>Keep <code>tests/test_adapters.py</code> and <code>tests/test_lookalike.py</code> as pre-production regression. Add <code>tests/test_cdp_schema.py</code> and <code>tests/test_run_orchestrator.py</code>. Drop upload/Segment acceptance tests.</p>
+</section>
+
+<section id="ch15">
+  <h2>15. Repository mapping and retired APIs</h2>
+  <pre><code>src/lookalike/
+  api/runs.py
+  orchestrator/
+  workers/scoring.py          # replaces upload-based generate.py
+  adapters/                   # keep
+  modeling/lightgbm_model.py  # predict only in production
+  integrations/cdp_clickhouse.py
+  domain/run_store.py         # replaces business Process store</code></pre>
+  <p>EDA, IV, and <code>train</code> stay in a pre-production extra. Current endpoints <code>/eda</code>, <code>/features/analyze</code>, <code>/model/train</code>, <code>/lookalike/score</code>, <code>/dashboard</code>, <code>/processes</code> (upload/generate/version) are retired from the production contract and replaced by <code>/runs</code>. Implement Run API + snapshot readers + ClickHouse writer + denylist first; then delete upload/Process paths; then shrink the production image. Until that landing, this document is the target contract — not the current FastAPI upload implementation.</p>
+</section>
+
+<section id="ch16">
+  <h2>16. Open items, risks, ADRs</h2>
+  <p>Inherit SAD P-01–P-13 (scheduler, candidate handover, customer key, ClickHouse physics, artifact platform, capacity/SLA, deploy, network, monitoring, DR, Smart Sales–CRM, attribution, governance thresholds). Unconfirmed items must not be described as implemented.</p>
+  <table>
+    <tr><th>ID</th><th>Risk</th><th>Mitigation</th></tr>
+    <tr><td>R-01</td><td>Snapshot not ready in the window</td><td>Dependency checks, readiness flag, controlled rerun</td></tr>
+    <tr><td>R-02</td><td>Version mismatch</td><td>Frozen refs, schema and checksum checks</td></tr>
+    <tr><td>R-03</td><td>Volume exceeds 4 hours</td><td>3.0M/6.0M tests; shard and concurrency calibration</td></tr>
+    <tr><td>R-04</td><td>Duplicate scores on retry</td><td>Composite key, publish flag, reconciliation</td></tr>
+    <tr><td>R-05</td><td>Unpublished model in production</td><td>Approval status + signature; no silent fallback</td></tr>
+  </table>
+  <h3>ADRs</h3>
+  <ol>
+    <li>Production form is a headless batch inference service, not an interactive Lookalike platform.</li>
+    <li>Scoring population is the Smart Sales candidate snapshot, not the bank-wide master and not user upload/Segment.</li>
+    <li>CDP path is idempotent ClickHouse write + publish after reconciliation; the six spreadsheet fields are the business contract.</li>
+    <li>Composite-key left side is <code>run_batch_id</code> (process ID), not <code>model_id</code> alone.</li>
+    <li>Train/serve split; no training stack in the production image; PSI does not auto-cutover.</li>
+    <li>Lookalike does not call CRM; thresholds and selection stay in Smart Sales.</li>
+    <li>Scores are for marketing ranking only, not credit decisions.</li>
+  </ol>
+</section>
+
+<p class="footer">Lookalike Monthly Batch Scoring Service — Detailed Design v4.0 · aligned with SAD V1.0 and the Sales CDP attachment schema · 2026-08-17</p>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</body>
+</html>
